@@ -1,6 +1,7 @@
 package engine_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/nateranda/djtools/engine"
@@ -25,33 +26,36 @@ func TestExportAndRoundTripImport(t *testing.T) {
 		},
 		Songs: []lib.Song{
 			{
-				SongID:             1,
-				Title:              "Export Track 1",
-				Artist:             "Test Artist",
-				Album:              "Test Album",
-				Genre:              "House",
-				Filetype:           "mp3",
-				Size:               102400,
-				Length:             300,
-				Year:               2024,
-				Bpm:                128,
-				BpmAnalyzed:        128.05,
-				DateAdded:          1700000000,
-				DateModified:       1700000050,
-				Bitrate:            320,
-				SampleRate:         44100,
-				Comment:            "Test Comment",
-				Rating:             80,
-				Path:               "/DJ Music/track1.mp3",
-				Key:                5,
-				Label:              "Test Label",
-				Cue:                1.5,
-				IsAnalyzed:         true,
-				IsBeatGridLocked:   true,
-				ExplicitLyrics:     false,
-				OriginDatabaseUUID: "test-uuid-12345",
-				OriginTrackID:      1,
-				AlbumArtID:         1,
+				SongID:               1,
+				Title:                "Export Track 1",
+				Artist:               "Test Artist",
+				Album:                "Test Album",
+				Genre:                "House",
+				Filetype:             "mp3",
+				Size:                 102400,
+				Length:               300,
+				Year:                 2024,
+				Bpm:                  128,
+				BpmAnalyzed:          128.05,
+				DateAdded:            1700000000,
+				DateModified:         1700000050,
+				Bitrate:              320,
+				SampleRate:           44100,
+				Comment:              "Test Comment",
+				Rating:               80,
+				Path:                 "music/track1.mp3",
+				Key:                  5,
+				Label:                "Test Label",
+				Cue:                  1.5,
+				IsAnalyzed:           true,
+				IsBeatGridLocked:     true,
+				ExplicitLyrics:       false,
+				OriginDatabaseUUID:   "test-uuid-12345",
+				OriginTrackID:        1,
+				AlbumArtID:           1,
+				OverviewWaveFormData: []byte("overview-waveform"),
+				TrackData:            []byte("detailed-trackdata"),
+				ActiveOnLoadLoops:    1,
 				Grid: []lib.Marker{
 					{
 						StartPosition: 0.12,
@@ -78,23 +82,23 @@ func TestExportAndRoundTripImport(t *testing.T) {
 				},
 			},
 			{
-				SongID:       2,
-				Title:        "Export Track 2",
-				Artist:       "Second Artist",
-				Album:        "Second Album",
-				Genre:        "Techno",
-				Filetype:     "wav",
-				Size:         204800,
-				Length:       240,
-				Year:         2025,
-				Bpm:          135,
-				DateAdded:    1700001000,
-				Bitrate:      1411,
-				SampleRate:   44100,
-				Path:         "/DJ Music/track2.wav",
-				Key:          12,
-				Label:        "Techno Label",
-				IsAnalyzed:   true,
+				SongID:     2,
+				Title:      "Export Track 2",
+				Artist:     "Second Artist",
+				Album:      "Second Album",
+				Genre:      "Techno",
+				Filetype:   "wav",
+				Size:       204800,
+				Length:     240,
+				Year:       2025,
+				Bpm:        135,
+				DateAdded:  1700001000,
+				Bitrate:    1411,
+				SampleRate: 44100,
+				Path:       "music/track2.wav",
+				Key:        12,
+				Label:      "Techno Label",
+				IsAnalyzed: true,
 				Grid: []lib.Marker{
 					{
 						StartPosition: 0.05,
@@ -152,6 +156,9 @@ func TestExportAndRoundTripImport(t *testing.T) {
 	assert.Equal(t, 128.05, song1.BpmAnalyzed)
 	assert.Equal(t, true, song1.IsAnalyzed)
 	assert.Equal(t, true, song1.IsBeatGridLocked)
+	assert.Equal(t, []byte("overview-waveform"), song1.OverviewWaveFormData)
+	assert.Equal(t, []byte("detailed-trackdata"), song1.TrackData)
+	assert.Equal(t, 1, song1.ActiveOnLoadLoops)
 	assert.Len(t, song1.Cues, 1)
 	assert.Equal(t, "Cue 1", song1.Cues[0].Name)
 	assert.Equal(t, 10.5, song1.Cues[0].Offset)
@@ -175,4 +182,73 @@ func TestExportAndRoundTripImport(t *testing.T) {
 	assert.Equal(t, 1, importedLib.AlbumArt[0].ID)
 	assert.Equal(t, "hash123", importedLib.AlbumArt[0].Hash)
 	assert.Equal(t, []byte("fake-image-bytes"), importedLib.AlbumArt[0].Data)
+}
+
+func TestExportDefaultValuesAndRelativePaths(t *testing.T) {
+	tempDir := t.TempDir()
+
+	originalLib := lib.Library{
+		Songs: []lib.Song{
+			{
+				SongID:     1,
+				Title:      "Default Track",
+				Path:       "relative/path/song.mp3",
+				SampleRate: 0, // Should default to 44100
+				Cues: []lib.HotCue{
+					{
+						Name:     "Bad Color Cue",
+						Position: 2,
+						Offset:   5.0,
+						Color:    "invalid-hex", // Fallback color test
+					},
+				},
+				Loops: []lib.Loop{
+					{
+						Name:     "Bad Color Loop",
+						Position: 3,
+						Start:    10.0,
+						End:      20.0,
+						Color:    "invalid-hex", // Fallback color test
+					},
+				},
+			},
+		},
+		Playlists: []lib.Playlist{
+			{
+				PlaylistID: 0, // Auto-assign ID
+				Name:       "Auto ID Playlist",
+				Songs:      []int{1},
+			},
+		},
+	}
+
+	err := engine.Export(originalLib, tempDir, engine.ExportOptions{Overwrite: true})
+	assert.NoError(t, err)
+
+	importedLib, err := engine.Import(tempDir, engine.ImportOptions{
+		PreserveOriginalPaths: false, // Exercises fullPathFromRelativePath
+	})
+	assert.NoError(t, err)
+
+	assert.Equal(t, "export-generated-uuid", importedLib.DatabaseUUID)
+	assert.Equal(t, 2, importedLib.SchemaVersionMajor)
+	assert.Len(t, importedLib.Songs, 1)
+
+	// Verify relative path resolution
+	expectedPath, _ := filepath.Abs(filepath.Join(tempDir, "relative/path/song.mp3"))
+	assert.Equal(t, expectedPath, importedLib.Songs[0].Path)
+
+	// Verify cue fallback color
+	assert.Len(t, importedLib.Songs[0].Cues, 1)
+	assert.Equal(t, "#00FFFF", importedLib.Songs[0].Cues[0].Color)
+
+	// Verify loop fallback color
+	assert.Len(t, importedLib.Songs[0].Loops, 1)
+	assert.Equal(t, "#000000", importedLib.Songs[0].Loops[0].Color)
+}
+
+func TestExportInvalidPath(t *testing.T) {
+	invalidPath := "/dev/null/invalid_dir"
+	err := engine.Export(lib.Library{}, invalidPath, engine.ExportOptions{})
+	assert.Error(t, err)
 }

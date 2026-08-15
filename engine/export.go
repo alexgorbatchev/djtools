@@ -445,8 +445,8 @@ func createQuickCuesBlob(sampleRate float64, mainCue float64, cues []lib.HotCue)
 			buf.WriteByte(byte(g))
 			buf.WriteByte(byte(b))
 		} else {
-			// empty cue slot: 1 byte len=0, 13 bytes padding
-			buf.Write(make([]byte, 14))
+			// empty cue slot: 1 byte len=0, 12 bytes padding (total 13 bytes)
+			buf.Write(make([]byte, 13))
 		}
 	}
 
