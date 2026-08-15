@@ -22,35 +22,66 @@ type ImportOptions struct {
 }
 
 type library struct {
+	info               information
 	songs              []songNull
 	songHistoryList    []songHistory
 	perfData           []performanceDataEntry
 	playlists          []playlist
 	playlistEntityList []playlistEntity
 	smartlistList      []smartlist
+	albumArtList       []albumArtEntry
+}
+
+type information struct {
+	id                 int
+	uuid               string
+	schemaVersionMajor int
+	schemaVersionMinor int
+	schemaVersionPatch int
+}
+
+type albumArtEntry struct {
+	id   int
+	hash string
+	data []byte
 }
 
 type songNull struct {
-	id           sql.NullInt64
-	title        sql.NullString
-	artist       sql.NullString
-	composer     sql.NullString
-	album        sql.NullString
-	genre        sql.NullString
-	filetype     sql.NullString
-	size         sql.NullInt64
-	length       sql.NullFloat64
-	year         sql.NullInt64
-	bpm          sql.NullFloat64
-	dateAdded    sql.NullTime
-	bitrate      sql.NullInt64
-	comment      sql.NullString
-	rating       sql.NullInt64
-	path         sql.NullString
-	remixer      sql.NullString
-	key          sql.NullInt32
-	label        sql.NullString
-	lastEditTime sql.NullTime
+	id                 sql.NullInt64
+	title              sql.NullString
+	artist             sql.NullString
+	composer           sql.NullString
+	album              sql.NullString
+	genre              sql.NullString
+	filetype           sql.NullString
+	size               sql.NullInt64
+	length             sql.NullFloat64
+	year               sql.NullInt64
+	bpm                sql.NullFloat64
+	bpmAnalyzed        sql.NullFloat64
+	dateAdded          sql.NullTime
+	bitrate            sql.NullInt64
+	comment            sql.NullString
+	rating             sql.NullInt64
+	path               sql.NullString
+	remixer            sql.NullString
+	key                sql.NullInt32
+	label              sql.NullString
+	lastEditTime       sql.NullTime
+	albumArtId         sql.NullInt64
+	timeLastPlayed     sql.NullTime
+	isPlayed           sql.NullBool
+	isAnalyzed         sql.NullBool
+	dateCreated        sql.NullTime
+	playedIndicator    sql.NullInt64
+	streamingSource    sql.NullString
+	uri                sql.NullString
+	isBeatGridLocked   sql.NullBool
+	originDatabaseUuid sql.NullString
+	originTrackId      sql.NullInt64
+	streamingFlags     sql.NullInt64
+	explicitLyrics     sql.NullBool
+	albumArtSourceHash sql.NullString
 }
 
 type songHistory struct {
@@ -60,10 +91,13 @@ type songHistory struct {
 }
 
 type performanceDataEntry struct {
-	id            int
-	beatDataBlob  []byte
-	quickCuesBlob []byte
-	loopsBlob     []byte
+	id                      int
+	beatDataBlob            []byte
+	quickCuesBlob           []byte
+	loopsBlob               []byte
+	trackDataBlob           []byte
+	overviewWaveFormDataBlob []byte
+	activeOnLoadLoops       sql.NullInt64
 }
 
 type playlist struct {

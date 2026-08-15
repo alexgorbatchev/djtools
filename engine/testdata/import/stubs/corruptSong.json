@@ -1,4 +1,8 @@
 {
+  "DatabaseUUID": "a2a066c9-a259-4230-aa72-dff691d02800",
+  "SchemaVersionMajor": 3,
+  "SchemaVersionMinor": 0,
+  "SchemaVersionPatch": 1,
   "Songs": [
     {
       "SongID": 2,
@@ -14,13 +18,18 @@
       "TrackNumber": 0,
       "Year": 2022,
       "Bpm": 130,
+      "BpmAnalyzed": 130,
       "DateModified": 1744996460,
       "DateAdded": 1744948800,
+      "DateCreated": 1729186379,
       "Bitrate": 320,
       "SampleRate": 44100,
       "Comment": "=-TechnoRulez-=",
       "PlayCount": 0,
       "LastPlayed": 0,
+      "TimeLastPlayed": -62135596800,
+      "IsPlayed": false,
+      "PlayedIndicator": 0,
       "Rating": 0,
       "Path": "../DJ Music/Seb Wildblood - Tetris.mp3",
       "Remixer": "",
@@ -38,7 +47,20 @@
       ],
       "Cues": null,
       "Loops": null,
-      "Corrupt": false
+      "Corrupt": false,
+      "IsAnalyzed": true,
+      "IsBeatGridLocked": false,
+      "ExplicitLyrics": false,
+      "OriginDatabaseUUID": "a2a066c9-a259-4230-aa72-dff691d02800",
+      "OriginTrackID": 2,
+      "StreamingSource": "",
+      "URI": "",
+      "StreamingFlags": 0,
+      "AlbumArtID": 2,
+      "AlbumArtSourceHash": "",
+      "OverviewWaveFormData": "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",
+      "TrackData": "AAAALHicc3ja0cAAAx+fgNgsDDgAAKM+BIc=",
+      "ActiveOnLoadLoops": 0
     },
     {
       "SongID": 3,
@@ -54,13 +76,18 @@
       "TrackNumber": 0,
       "Year": 2022,
       "Bpm": 130,
+      "BpmAnalyzed": 130,
       "DateModified": 1744999081,
       "DateAdded": 1744948800,
+      "DateCreated": 1729267541,
       "Bitrate": 320,
       "SampleRate": 44100,
       "Comment": "",
       "PlayCount": 0,
       "LastPlayed": 0,
+      "TimeLastPlayed": -62135596800,
+      "IsPlayed": false,
+      "PlayedIndicator": 0,
       "Rating": 0,
       "Path": "../DJ Music/Sam Gellaitry - GULLIBLE.mp3",
       "Remixer": "",
@@ -78,7 +105,20 @@
       ],
       "Cues": null,
       "Loops": null,
-      "Corrupt": false
+      "Corrupt": false,
+      "IsAnalyzed": true,
+      "IsBeatGridLocked": false,
+      "ExplicitLyrics": false,
+      "OriginDatabaseUUID": "a2a066c9-a259-4230-aa72-dff691d02800",
+      "OriginTrackID": 3,
+      "StreamingSource": "",
+      "URI": "",
+      "StreamingFlags": 0,
+      "AlbumArtID": 3,
+      "AlbumArtSourceHash": "",
+      "OverviewWaveFormData": "AAAMG3icY2AAARYGBijtcMD4AQM+wAhGzGA9TGAGMwMjByMjmMvICkMsQJIRJMsEZoO5jCyMjOyMTKLMTDyMzHxMTPyMTAJMzIJMLDyMjMwMzDyMTGwMLPyMQMTIycTCzsjGycjBxcjGzcguxsrBx8QrycJnwM4tw8yrxyqswiypyyahwsotxMwtxaSgw8yjxCyrwMQrzSIsxSopymwgwawuxSwtxS6pzS6kzqqfxG/pz+Wnx+YcxavgKWwSqRDsrZTrIVURKHHIVShcRdPGRaLMWzpMlXuLEUeWAbupNleGq4SPMvtxW/ZZ0bxTooTKfEQ+OrF/8eDcGSEyO0AgW5N/YxTfVWd2X0+20iAxV3WBeAXO93YcSyzZu1zEuv35WvTZrkRy3wvimhwtuSSI28COO9hSZnqs0uwI+TneYnMDhTsV1Eq9JFpC5J1UeZvNuVZYsfkosNT5SDsYcU71YJ8VxdsVyDU9UPqSI+clX86dKcK5rjzrNQXmBghfdecIdmWP9OaNtBUPVec+bMGxx5Rtrg1/tJ/oBRPWk+5cR2N4GsLElgTymVlx+XpLTUpSaQlV6nMULvEQvmSoWGAl2xOsYOqjYlkpcd6bx2KSWs00VYtY6ZDpamur5awmK/V0am8okD+QJLgvWHhJgthuF8XGEJ2djobFExWjAm3amvQMV6rMrVVsj5ANtRbpK9M4nqJ4KEPmbBF/WwDfPE9hL1PJVHfpPTFKja6u9T5OM/M09tsaelgF5kxUCF2tZ51ldTRexS1POW6ympO+r/Ni+QsFKi4J6tkFil3lShti5O4mi89NlznuLVuXpVDrrrmjTNqjTKEy1sxyumZykfyyTAVXb9H6cNVNueIz3XhXpssdihLozdJx7lI1SFPKD1OYEKawLlC6P0DisIdQvJJmoo5om5+cY4b87nThRWES7svUS2Ml1Sep7WpViJ2mEjdJq6xK52mK6J0AvoXZUjs8ZAv1VWeFGh/Ol/fu1Mzwd/CZo2gyVeVCtHR6nERNgFJbgvLMDI3H2UJXMvjqimQzrXk1veSCvYQmRVp0RZq0hnhOTlbrVwg2bNSon6HpuFi9Lkt/aaqiY49Sd5q+tZ/LgnliOckGdkmyU+u0buTI3kiWXlqqWBwusTVYvD9C+2SgfHS9YnKUQVGnmna7wo58uax05U5fycws1UNunCdTJU+kCDfXaibnqWq2yxf4Ss6JVuqNVJ7sJNrqLnzGXck3Qr4hX8HRmt/chOe+M1u1NluFu0SEOVeGLcchP86QeN62cKnrAdzvLDmOBvDOCRc+6SnU7Ce8I4irJIirzZu9rlbOZx7//EkCNSbsrnosTVGyp2w5tlpzrikUa08Wme8n4hIgGe8msS1Nqi7YtTnSubNQ09dRkIsZb1kxCkbBKBgFo2AUjIIhBb6sDgYAs78eXw==",
+      "TrackData": "AAAALHicc3ja0cAAA43zQSQvAw4AAH/5A1s=",
+      "ActiveOnLoadLoops": 0
     }
   ],
   "Playlists": [
@@ -98,5 +138,7 @@
         }
       ]
     }
-  ]
+  ],
+  "Smartlists": null,
+  "AlbumArt": null
 }

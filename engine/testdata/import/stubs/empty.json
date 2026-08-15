@@ -1,4 +1,10 @@
 {
+  "DatabaseUUID": "392c48fe-556b-452a-b2eb-6255e8ca3518",
+  "SchemaVersionMajor": 3,
+  "SchemaVersionMinor": 0,
+  "SchemaVersionPatch": 1,
   "Songs": null,
-  "Playlists": null
+  "Playlists": null,
+  "Smartlists": null,
+  "AlbumArt": null
 }

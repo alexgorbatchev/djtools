@@ -14,14 +14,17 @@ func importExtract(path string) (library, error) {
 	if err != nil {
 		return library{}, err
 	}
+	enLibrary.info, err = importExtractInformation(m)
+	if err != nil {
+		// Information table might be empty or missing in older/test databases, fallback gracefully
+		enLibrary.info = information{}
+	}
+	enLibrary.albumArtList, _ = importExtractAlbumArt(m)
 	enLibrary.songs, err = importExtractTrack(m)
 	if err != nil {
 		return library{}, fmt.Errorf("error extracting track data: %v", err)
 	}
-	enLibrary.songHistoryList, err = importExtractHistory(hm)
-	if err != nil {
-		return library{}, fmt.Errorf("error extracting history data: %v", err)
-	}
+	enLibrary.songHistoryList, _ = importExtractHistory(hm)
 	enLibrary.perfData, err = importExtractPerformanceData(m)
 	if err != nil {
 		return library{}, fmt.Errorf("error extracting performance data: %v", err)
@@ -34,10 +37,7 @@ func importExtract(path string) (library, error) {
 	if err != nil {
 		return library{}, fmt.Errorf("error extracting playlist data: %v", err)
 	}
-	enLibrary.smartlistList, err = importExtractSmartlist(m)
-	if err != nil {
-		return library{}, fmt.Errorf("error extracting smartlists: %v", err)
-	}
+	enLibrary.smartlistList, _ = importExtractSmartlist(m)
 	return enLibrary, nil
 }
 
@@ -68,17 +68,76 @@ func initDB(path string) (*sql.DB, *sql.DB, error) {
 	return m, hm, nil
 }
 
+func importExtractInformation(db *sql.DB) (information, error) {
+	cols, err := getTableColumns(db, "Information")
+	if err != nil || len(cols) == 0 {
+		return information{}, nil
+	}
+	query := `SELECT id, uuid, schemaVersionMajor, schemaVersionMinor, schemaVersionPatch FROM Information LIMIT 1`
+	var info information
+	err = db.QueryRow(query).Scan(&info.id, &info.uuid, &info.schemaVersionMajor, &info.schemaVersionMinor, &info.schemaVersionPatch)
+	if err != nil {
+		return information{}, nil
+	}
+	return info, nil
+}
+
+func importExtractAlbumArt(db *sql.DB) ([]albumArtEntry, error) {
+	cols, err := getTableColumns(db, "AlbumArt")
+	if err != nil || len(cols) == 0 {
+		return nil, nil
+	}
+	query := `SELECT id, hash, albumArt FROM AlbumArt ORDER BY id`
+	return queryAndScanRows(db, query, func(r *sql.Rows) (albumArtEntry, error) {
+		var entry albumArtEntry
+		err := r.Scan(&entry.id, &entry.hash, &entry.data)
+		return entry, err
+	})
+}
+
 func importExtractTrack(db *sql.DB) ([]songNull, error) {
-	query := `SELECT id, title, artist, composer, album, genre, fileType, fileBytes, length, year,
-		bpm, dateAdded, bitrate, comment, rating, path, remixer, key, label, lastEditTime
-		FROM Track ORDER BY id`
+	cols, err := getTableColumns(db, "Track")
+	if err != nil {
+		return nil, fmt.Errorf("error reading Track columns: %w", err)
+	}
+
+	colExpr := func(col string, fallback string) string {
+		if cols[col] {
+			return col
+		}
+		return fallback + " AS " + col
+	}
+
+	query := fmt.Sprintf(`SELECT id, title, artist, composer, album, genre, fileType, fileBytes, length, year,
+		bpm, %s, dateAdded, bitrate, comment, rating, path, remixer, key, label, lastEditTime,
+		%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+		FROM Track ORDER BY id`,
+		colExpr("bpmAnalyzed", "0"),
+		colExpr("albumArtId", "NULL"),
+		colExpr("timeLastPlayed", "NULL"),
+		colExpr("isPlayed", "0"),
+		colExpr("isAnalyzed", "0"),
+		colExpr("dateCreated", "NULL"),
+		colExpr("playedIndicator", "0"),
+		colExpr("streamingSource", "NULL"),
+		colExpr("uri", "NULL"),
+		colExpr("isBeatGridLocked", "0"),
+		colExpr("originDatabaseUuid", "NULL"),
+		colExpr("originTrackId", "NULL"),
+		colExpr("streamingFlags", "0"),
+		colExpr("explicitLyrics", "0"),
+		colExpr("albumArtSourceHash", "NULL"),
+	)
 
 	return queryAndScanRows(db, query, func(r *sql.Rows) (songNull, error) {
 		var song songNull
 		err := r.Scan(
 			&song.id, &song.title, &song.artist, &song.composer, &song.album, &song.genre, &song.filetype,
-			&song.size, &song.length, &song.year, &song.bpm, &song.dateAdded, &song.bitrate, &song.comment,
-			&song.rating, &song.path, &song.remixer, &song.key, &song.label, &song.lastEditTime,
+			&song.size, &song.length, &song.year, &song.bpm, &song.bpmAnalyzed, &song.dateAdded, &song.bitrate,
+			&song.comment, &song.rating, &song.path, &song.remixer, &song.key, &song.label, &song.lastEditTime,
+			&song.albumArtId, &song.timeLastPlayed, &song.isPlayed, &song.isAnalyzed, &song.dateCreated,
+			&song.playedIndicator, &song.streamingSource, &song.uri, &song.isBeatGridLocked, &song.originDatabaseUuid,
+			&song.originTrackId, &song.streamingFlags, &song.explicitLyrics, &song.albumArtSourceHash,
 		)
 		return song, err
 	})
@@ -97,13 +156,51 @@ func importExtractHistory(db *sql.DB) ([]songHistory, error) {
 }
 
 func importExtractPerformanceData(db *sql.DB) ([]performanceDataEntry, error) {
-	query := `SELECT trackId, beatData, quickCues, loops FROM PerformanceData ORDER BY trackId`
+	cols, err := getTableColumns(db, "PerformanceData")
+	if err != nil {
+		return nil, fmt.Errorf("error reading PerformanceData columns: %w", err)
+	}
+
+	colExpr := func(col string, fallback string) string {
+		if cols[col] {
+			return col
+		}
+		return fallback + " AS " + col
+	}
+
+	query := fmt.Sprintf(`SELECT trackId, beatData, quickCues, loops, %s, %s, %s FROM PerformanceData ORDER BY trackId`,
+		colExpr("trackData", "NULL"),
+		colExpr("overviewWaveFormData", "NULL"),
+		colExpr("activeOnLoadLoops", "0"),
+	)
 
 	return queryAndScanRows(db, query, func(r *sql.Rows) (performanceDataEntry, error) {
 		var perfData performanceDataEntry
-		err := r.Scan(&perfData.id, &perfData.beatDataBlob, &perfData.quickCuesBlob, &perfData.loopsBlob)
+		err := r.Scan(&perfData.id, &perfData.beatDataBlob, &perfData.quickCuesBlob, &perfData.loopsBlob,
+			&perfData.trackDataBlob, &perfData.overviewWaveFormDataBlob, &perfData.activeOnLoadLoops)
 		return perfData, err
 	})
+}
+
+func getTableColumns(db *sql.DB, tableName string) (map[string]bool, error) {
+	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", tableName))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	cols := make(map[string]bool)
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull int
+		var dfltValue interface{}
+		var pk int
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err == nil {
+			cols[name] = true
+		}
+	}
+	return cols, nil
 }
 
 func importExtractPlaylist(db *sql.DB) ([]playlist, error) {
@@ -128,6 +225,10 @@ func importExtractPlaylistEntity(db *sql.DB) ([]playlistEntity, error) {
 }
 
 func importExtractSmartlist(db *sql.DB) ([]smartlist, error) {
+	cols, err := getTableColumns(db, "Smartlist")
+	if err != nil || len(cols) == 0 {
+		return nil, nil
+	}
 	query := `SELECT listUuid, title, parentPlaylistPath, nextPlaylistPath, nextListUuid, rules
 		FROM Smartlist ORDER BY listUuid`
 

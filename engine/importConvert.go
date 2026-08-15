@@ -11,6 +11,13 @@ import (
 
 func importConvert(enLibrary library, path string, importOptions ImportOptions) (lib.Library, error) {
 	var library lib.Library
+	library.DatabaseUUID = enLibrary.info.uuid
+	library.SchemaVersionMajor = enLibrary.info.schemaVersionMajor
+	library.SchemaVersionMinor = enLibrary.info.schemaVersionMinor
+	library.SchemaVersionPatch = enLibrary.info.schemaVersionPatch
+
+	importConvertAlbumArt(&library, enLibrary.albumArtList)
+
 	err := importConvertSong(&library, enLibrary.songs, path, importOptions)
 	if err != nil {
 		return lib.Library{}, err
@@ -24,6 +31,7 @@ func importConvert(enLibrary library, path string, importOptions ImportOptions) 
 	if err != nil {
 		return lib.Library{}, err
 	}
+	importConvertSmartlist(&library, enLibrary.smartlistList)
 
 	library.CheckCorruptedSongs()
 
@@ -43,26 +51,41 @@ func importConvertSong(library *lib.Library, songsNull []songNull, path string, 
 			}
 		}
 		library.Songs = append(library.Songs, lib.Song{
-			SongID:       int(song.id.Int64),
-			Title:        song.title.String,
-			Artist:       song.artist.String,
-			Composer:     song.composer.String,
-			Album:        song.album.String,
-			Genre:        song.genre.String,
-			Filetype:     song.filetype.String,
-			Size:         int(song.size.Int64),
-			Length:       float32(song.length.Float64),
-			Year:         int(song.year.Int64),
-			Bpm:          float32(song.bpm.Float64),
-			DateAdded:    int(song.dateAdded.Time.Unix()),
-			DateModified: int(song.lastEditTime.Time.Unix()),
-			Bitrate:      int(song.bitrate.Int64),
-			Comment:      song.comment.String,
-			Rating:       int(song.rating.Int64),
-			Path:         songPath,
-			Remixer:      song.remixer.String,
-			Key:          int(song.key.Int32),
-			Label:        song.label.String,
+			SongID:             int(song.id.Int64),
+			Title:              song.title.String,
+			Artist:             song.artist.String,
+			Composer:           song.composer.String,
+			Album:              song.album.String,
+			Genre:              song.genre.String,
+			Filetype:           song.filetype.String,
+			Size:               int(song.size.Int64),
+			Length:             float32(song.length.Float64),
+			Year:               int(song.year.Int64),
+			Bpm:                float32(song.bpm.Float64),
+			BpmAnalyzed:        song.bpmAnalyzed.Float64,
+			DateAdded:          int(song.dateAdded.Time.Unix()),
+			DateModified:       int(song.lastEditTime.Time.Unix()),
+			DateCreated:        int(song.dateCreated.Time.Unix()),
+			Bitrate:            int(song.bitrate.Int64),
+			Comment:            song.comment.String,
+			Rating:             int(song.rating.Int64),
+			Path:               songPath,
+			Remixer:            song.remixer.String,
+			Key:                int(song.key.Int32),
+			Label:              song.label.String,
+			AlbumArtID:         int(song.albumArtId.Int64),
+			TimeLastPlayed:     int(song.timeLastPlayed.Time.Unix()),
+			IsPlayed:           song.isPlayed.Bool,
+			IsAnalyzed:         song.isAnalyzed.Bool,
+			PlayedIndicator:    int(song.playedIndicator.Int64),
+			StreamingSource:    song.streamingSource.String,
+			URI:                song.uri.String,
+			IsBeatGridLocked:   song.isBeatGridLocked.Bool,
+			OriginDatabaseUUID: song.originDatabaseUuid.String,
+			OriginTrackID:      int(song.originTrackId.Int64),
+			StreamingFlags:     int(song.streamingFlags.Int64),
+			ExplicitLyrics:     song.explicitLyrics.Bool,
+			AlbumArtSourceHash: song.albumArtSourceHash.String,
 		})
 	}
 	return nil
@@ -128,8 +151,35 @@ func importConvertPerformanceData(library *lib.Library, perfData []performanceDa
 		if err != nil {
 			return err
 		}
+
+		song.OverviewWaveFormData = perfDataEntry.overviewWaveFormDataBlob
+		song.TrackData = perfDataEntry.trackDataBlob
+		song.ActiveOnLoadLoops = int(perfDataEntry.activeOnLoadLoops.Int64)
 	}
 	return nil
+}
+
+func importConvertAlbumArt(library *lib.Library, albumArtList []albumArtEntry) {
+	for _, entry := range albumArtList {
+		library.AlbumArt = append(library.AlbumArt, lib.AlbumArt{
+			ID:   entry.id,
+			Hash: entry.hash,
+			Data: entry.data,
+		})
+	}
+}
+
+func importConvertSmartlist(library *lib.Library, smartlistList []smartlist) {
+	for _, entry := range smartlistList {
+		library.Smartlists = append(library.Smartlists, lib.Smartlist{
+			ListUUID:           entry.listUuid,
+			Title:              entry.title,
+			ParentPlaylistPath: entry.parentPlaylistPath.String,
+			NextPlaylistPath:   entry.nextPlaylistPath.String,
+			NextListUUID:       entry.nextListUuid.String,
+			Rules:              entry.rules,
+		})
+	}
 }
 
 func importConvertHistory(library *lib.Library, songHistoryList []songHistory) {
