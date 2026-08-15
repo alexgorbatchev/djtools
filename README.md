@@ -11,16 +11,15 @@
 - Hot cues
 - Loops
 - Beat grids
-
-Smart playlist conversion and MP3 offset correction is planned.
+- Smart lists and rules
+- Album artwork
 
 ### Platforms
 Currently, `djtools` supports these platforms:
-- Engine: import
+- Engine: import and export
 - Rekordbox XML: import and export
 
 `djtools` plans to support these platforms:
-- Engine: export
 - Rekordbox: import and export
 - Algoriddim Djay: import and export
 - Serato: import and export
@@ -35,7 +34,8 @@ Currently, `djtools` supports these platforms:
 - Purchase link finder: import a `djtools` library, a streaming service playlist, or a song name and get a list of links to buy the song(s) with their respective prices
 
 ## Usage
-Below illustrates basic usage of `djtools`. The example code imports an Engine library, removes the first playlist from the library, and exports the library to a Rekordbox XML file.
+Below illustrates basic usage of `djtools`. The example code imports an Engine library, modifies the library, and exports it to both Rekordbox XML and Engine DJ database format.
+
 ```go
 package main
 
@@ -47,24 +47,37 @@ import (
 )
 
 func main() {
-  // initialize an empty options struct
-  importOptions := engine.ImportOptions{}
+	// initialize import options
+	importOptions := engine.ImportOptions{
+		PreserveOriginalPaths: true,
+		ImportOriginalCues:    true,
+		ImportOriginalGrids:   true,
+	}
 
-  // import your Engine library
-  library, err := engine.Import("import/path/", importOptions)
-  if err != nil {
-	  log.Panic(err)
-  }
+	// import your Engine library
+	library, err := engine.Import("import/path/", importOptions)
+	if err != nil {
+		log.Panic(err)
+	}
 
-  // modify your library however you want,
-  // like removing the first playlist
-  library.Playlists = library.Playlists[1:]
+	// modify your library
+	if len(library.Playlists) > 1 {
+		library.Playlists = library.Playlists[1:]
+	}
 
-  // export to a Rekordbox XML file
-  err = rbxml.Export(&library, "export/path/library.xml")
-  if err != nil {
-	  log.Panic(err)
-  }
+	// export to a Rekordbox XML file
+	err = rbxml.Export(&library, "export/path/library.xml")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	// export back to Engine DJ database format
+	exportOptions := engine.ExportOptions{
+		Overwrite: true,
+	}
+	err = engine.Export(library, "export/path/engine/", exportOptions)
+	if err != nil {
+		log.Panic(err)
+	}
 }
-
 ```
