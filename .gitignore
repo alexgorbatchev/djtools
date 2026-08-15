@@ -3,4 +3,5 @@ databases/
 tmp/
 .vscode/
 __debug_*
-test.go
+test.gocoverage.out
+/coverage.out
