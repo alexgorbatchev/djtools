@@ -25,7 +25,6 @@ func pathToURI(path string) string {
 	cleaned := filepath.ToSlash(filepath.Clean(path))
 	cleaned = strings.TrimPrefix(cleaned, "/")
 
-	// URL-encode path components while preserving slashes
 	parts := strings.Split(cleaned, "/")
 	for i, part := range parts {
 		parts[i] = url.PathEscape(part)
@@ -174,58 +173,65 @@ func exportConvertGrid(song *lib.Song) []tempo {
 	return tempos
 }
 
-func exportConvertSubPlaylists(playlist lib.Playlist) []node {
-	var nodes []node
-
-	// add playlist node containing tracks only if playlist has songs
-	if len(playlist.Songs) > 0 {
-		var tracks []nodeTrack
-		for _, id := range playlist.Songs {
-			tracks = append(tracks, nodeTrack{Id: int32(id)})
-		}
-		nodes = append(nodes, node{
-			NodeType: 1,
-			Name:     playlist.Name,
-			Entries:  int32(len(playlist.Songs)),
-			Tracks:   &tracks,
-		})
-	}
-
-	// add folder node containing sub-playlists
+func exportConvertSubPlaylists(playlist lib.Playlist) node {
+	// If playlist has sub-playlists, it must be represented as a Folder node (Type 0)
 	if len(playlist.SubPlaylists) > 0 {
-		var subNodes []node
-		for _, sub := range playlist.SubPlaylists {
-			subNodes = append(subNodes, exportConvertSubPlaylists(sub)...)
-		}
+		var children []node
 
-		var name string
+		// If it ALSO has direct songs, place a Playlist node (Type 1) inside this Folder node
 		if len(playlist.Songs) > 0 {
-			name = playlist.Name + "_folder"
-		} else {
-			name = playlist.Name
+			var tracks []nodeTrack
+			for _, id := range playlist.Songs {
+				tracks = append(tracks, nodeTrack{Id: int32(id)})
+			}
+			children = append(children, node{
+				NodeType: 1,
+				Name:     playlist.Name,
+				Entries:  int32(len(playlist.Songs)),
+				KeyType:  0,
+				Tracks:   &tracks,
+			})
 		}
 
-		nodes = append(nodes, node{
+		// Convert and append all sub-playlists as child nodes inside this Folder node
+		for _, sub := range playlist.SubPlaylists {
+			children = append(children, exportConvertSubPlaylists(sub))
+		}
+
+		return node{
 			NodeType: 0,
-			Name:     name,
-			Count:    int32(len(playlist.SubPlaylists)),
-			Nodes:    &subNodes,
-		})
+			Name:     playlist.Name,
+			Count:    int32(len(children)),
+			KeyType:  0,
+			Nodes:    &children,
+		}
 	}
 
-	return nodes
+	// Simple playlist with no sub-playlists (Type 1)
+	var tracks []nodeTrack
+	for _, id := range playlist.Songs {
+		tracks = append(tracks, nodeTrack{Id: int32(id)})
+	}
+	return node{
+		NodeType: 1,
+		Name:     playlist.Name,
+		Entries:  int32(len(playlist.Songs)),
+		KeyType:  0,
+		Tracks:   &tracks,
+	}
 }
 
 func exportConvertPlaylist(library *lib.Library) node {
 	var nodes []node
 	for _, playlist := range library.Playlists {
-		nodes = append(nodes, exportConvertSubPlaylists(playlist)...)
+		nodes = append(nodes, exportConvertSubPlaylists(playlist))
 	}
 
 	return node{
 		NodeType: 0,
 		Name:     "ROOT",
-		Count:    int32(len(library.Playlists)),
+		Count:    int32(len(nodes)),
+		KeyType:  0,
 		Nodes:    &nodes,
 	}
 }

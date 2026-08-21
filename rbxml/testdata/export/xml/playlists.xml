@@ -34,6 +34,7 @@
        <NODE Type="1" Name="Playlist4" Entries="1" KeyType="0">
          <TRACK Key="1"></TRACK>
        </NODE>
+       <NODE Type="1" Name="Playlist5" KeyType="0"></NODE>
      </NODE>
    </PLAYLISTS>
  </DJ_PLAYLISTS>

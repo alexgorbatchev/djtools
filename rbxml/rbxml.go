@@ -1,4 +1,3 @@
-// This package contains import and export functions for Rekordbox's XML format.
 package rbxml
 
 import (
@@ -125,12 +124,12 @@ func (d *djPlaylists) sort() {
 
 // write writes a djPlaylists struct to a XML file at the given path
 func (d *djPlaylists) write(path string) error {
-	xml, err := xml.MarshalIndent(d, " ", "  ")
+	xmlData, err := xml.MarshalIndent(d, " ", "  ")
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(path, xml, 0644)
+	err = os.WriteFile(path, xmlData, 0644)
 	if err != nil {
 		return fmt.Errorf("error exporting library: %v", err)
 	}

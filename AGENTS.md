@@ -27,6 +27,7 @@ go vet ./...
 - `rbxml/`: Rekordbox XML import and export logic.
 - `serato/`: Serato library import/extraction logic.
 - `lib/`: Canonical core data models (`Library`, `Song`, `Playlist`, `HotCue`, `Loop`, `Marker`, `Smartlist`, `AlbumArt`) shared across all formats.
+- `engine-to-rekordbox/`: Standalone TUI/CLI sync tool (`engine-to-rekordbox/AGENTS.md`).
 
 ## Key Rules & Conventions
 
@@ -39,5 +40,7 @@ go vet ./...
 ## Boundaries
 
 - **Always:** Verify `go test ./...` and `go vet ./...` pass before committing code.
+- **Always:** Update test files and maintain 90% code coverage whenever code changes affect runtime execution results (excluding `scripts/`).
+- **Always:** Automatically record all new user instructions in the most appropriate `AGENTS.md` file without requiring the user to ask.
 - **Ask First:** Before modifying existing `lib.Library` public API fields if it breaks backwards compatibility with callers.
 - **Never:** Hardcode absolute file paths in tests or code; use `t.TempDir()` or relative fixture paths.

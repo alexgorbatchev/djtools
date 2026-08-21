@@ -72,7 +72,7 @@ func TestExport(t *testing.T) {
 			export := loadXml(t, tempPath)
 			check := loadXml(t, path)
 			assert.Nil(t, err, "Valid database import should return no errors.")
-			assert.Equal(t, check, export, "Library should match expected output.")
+			assert.Equal(t, string(check), string(export), "Library should match expected output.")
 		})
 	}
 }

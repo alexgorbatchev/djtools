@@ -50,8 +50,14 @@ func importConvertSong(library *lib.Library, songsNull []songNull, path string, 
 				return fmt.Errorf("error converting songs: %v", err)
 			}
 		}
+
+		songID := int(song.id.Int64)
+		if song.originTrackId.Valid && song.originTrackId.Int64 > 0 {
+			songID = int(song.originTrackId.Int64)
+		}
+
 		library.Songs = append(library.Songs, lib.Song{
-			SongID:             int(song.id.Int64),
+			SongID:             songID,
 			Title:              song.title.String,
 			Artist:             song.artist.String,
 			Composer:           song.composer.String,
@@ -99,6 +105,9 @@ func importConvertPerformanceData(library *lib.Library, perfData []performanceDa
 
 	for _, perfDataEntry := range perfData {
 		song := songMap[perfDataEntry.id]
+		if song == nil {
+			continue
+		}
 
 		beatDataBlobComp := perfDataEntry.beatDataBlob
 		if beatDataBlobComp == nil {
