@@ -14,6 +14,8 @@ func importExtract(path string) (library, error) {
 	if err != nil {
 		return library{}, err
 	}
+	defer m.Close()
+	defer hm.Close()
 	enLibrary.info, err = importExtractInformation(m)
 	if err != nil {
 		// Information table might be empty or missing in older/test databases, fallback gracefully
