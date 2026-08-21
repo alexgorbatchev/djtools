@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -178,7 +177,7 @@ func exportConvertGrid(song *lib.Song) []tempo {
 func exportConvertSubPlaylists(playlist lib.Playlist) []node {
 	var nodes []node
 
-	// add playlist node containing tracks only if playlist actually has songs
+	// add playlist node containing tracks only if playlist has songs
 	if len(playlist.Songs) > 0 {
 		var tracks []nodeTrack
 		for _, id := range playlist.Songs {
@@ -195,12 +194,10 @@ func exportConvertSubPlaylists(playlist lib.Playlist) []node {
 	// add folder node containing sub-playlists
 	if len(playlist.SubPlaylists) > 0 {
 		var subNodes []node
-		// add sub-playlist nodes recursively
-		for _, playlist := range playlist.SubPlaylists {
-			subNodes = slices.Concat(subNodes, exportConvertSubPlaylists(playlist))
+		for _, sub := range playlist.SubPlaylists {
+			subNodes = append(subNodes, exportConvertSubPlaylists(sub)...)
 		}
-		// add '_folder' to playlist name if it contains songs
-		// to differentiate it from the actual playlist
+
 		var name string
 		if len(playlist.Songs) > 0 {
 			name = playlist.Name + "_folder"
@@ -222,7 +219,7 @@ func exportConvertSubPlaylists(playlist lib.Playlist) []node {
 func exportConvertPlaylist(library *lib.Library) node {
 	var nodes []node
 	for _, playlist := range library.Playlists {
-		nodes = slices.Concat(nodes, exportConvertSubPlaylists(playlist))
+		nodes = append(nodes, exportConvertSubPlaylists(playlist)...)
 	}
 
 	return node{

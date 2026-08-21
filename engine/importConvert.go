@@ -230,10 +230,15 @@ func importConvertPlaylist(library *lib.Library, playlists []playlist, playlistE
 
 	// move parent playlists to Library
 	for _, playlist := range parentPlaylists {
+		var songs []int
+		if len(playlist.songs) > 0 {
+			songs = playlist.songs
+		}
+
 		newPlaylist := lib.Playlist{
 			Name:       playlist.title,
 			PlaylistID: playlist.id,
-			Songs:      playlist.songs,
+			Songs:      songs,
 		}
 
 		library.Playlists = append(library.Playlists, newPlaylist)
@@ -275,10 +280,15 @@ func importConvertPlaylist(library *lib.Library, playlists []playlist, playlistE
 
 		// move new 'parent' playlists to library
 		for _, playlist := range parentPlaylistsNew {
+			var songs []int
+			if len(playlist.songs) > 0 {
+				songs = playlist.songs
+			}
+
 			newPlaylist := lib.Playlist{
 				Name:       playlist.title,
 				PlaylistID: playlist.id,
-				Songs:      playlist.songs,
+				Songs:      songs,
 			}
 			parentPlaylist := parentPlaylistAddressMap[playlist.parentListId]
 			parentPlaylist.SubPlaylists = append(parentPlaylist.SubPlaylists, newPlaylist)
