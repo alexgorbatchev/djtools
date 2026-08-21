@@ -31,7 +31,22 @@ func pathToURI(path string) string {
 	}
 	encodedPath := strings.Join(parts, "/")
 
-	return "file://localhost/" + encodedPath
+	uri := "file://localhost/" + encodedPath
+	if len(uri) > 255 {
+		ext := filepath.Ext(cleaned)
+		filename := filepath.Base(cleaned)
+		prefix := "file://localhost/Contents/Music/"
+		maxFilenameLen := 255 - len(prefix) - len(ext)
+		if maxFilenameLen > 5 {
+			nameNoExt := strings.TrimSuffix(filename, ext)
+			if len(nameNoExt) > maxFilenameLen {
+				nameNoExt = nameNoExt[:maxFilenameLen]
+			}
+			return prefix + url.PathEscape(nameNoExt+ext)
+		}
+	}
+
+	return uri
 }
 
 func exportConvertTonality(key int) (string, error) {
@@ -250,6 +265,14 @@ func exportConvertSong(library *lib.Library, options ExportOptions) ([]track, er
 		}
 		positionMarks := exportConvertPositionMarks(&song)
 		tempos := exportConvertGrid(&song)
+
+		bpm := float64(song.Bpm)
+		if bpm <= 0 && song.BpmAnalyzed > 0 {
+			bpm = song.BpmAnalyzed
+		} else if bpm <= 0 && len(song.Grid) > 0 && song.Grid[0].Bpm > 0 {
+			bpm = song.Grid[0].Bpm
+		}
+
 		tracks = append(tracks, track{
 			TrackId:      song.SongID,
 			Name:         song.Title,
@@ -263,7 +286,7 @@ func exportConvertSong(library *lib.Library, options ExportOptions) ([]track, er
 			TotalTime:    float64(song.Length), // make sure this is rounded?
 			TrackNumber:  int32(song.TrackNumber),
 			Year:         int32(song.Year),
-			AverageBpm:   float64(song.Bpm),
+			AverageBpm:   bpm,
 			DateModified: unixToDate(song.DateModified, options),
 			DateAdded:    unixToDate(song.DateAdded, options),
 			BitRate:      int32(song.Bitrate),
