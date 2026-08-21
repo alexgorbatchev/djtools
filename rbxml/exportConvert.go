@@ -81,7 +81,7 @@ func exportConvertTonality(key int) (string, error) {
 	case 23:
 		return "7A", nil
 	}
-	return "", fmt.Errorf("tonality '%d' is outside the accepted range", key)
+	return "", nil // Fallback to empty string for unknown/invalid key
 }
 
 func exportConvertRating(rating int) (int32, error) {
@@ -99,7 +99,13 @@ func exportConvertRating(rating int) (int32, error) {
 	case 100:
 		return 255, nil
 	}
-	return -1, fmt.Errorf("NoMatchError: rating %d did not match convention. Must be 0, 20, 40, 60, 80, or 100", rating)
+	if rating > 0 && rating <= 5 {
+		return int32(rating * 51), nil
+	}
+	if rating > 0 && rating <= 255 {
+		return int32(rating), nil
+	}
+	return 0, nil // Fallback to 0 rating
 }
 
 func exportConvertPositionMarks(song *lib.Song) []positionMark {
