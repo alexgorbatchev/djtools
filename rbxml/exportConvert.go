@@ -23,11 +23,17 @@ func unixToDate(date int, options ExportOptions) string {
 }
 
 func pathToURI(path string) string {
-	// this is a jank fix, replace with something more robust?
-	uriPath := filepath.ToSlash(path)
-	uriPath = url.PathEscape(uriPath)
-	uriPath = strings.ReplaceAll(uriPath, "%2F", "/") // keep slashes
-	return "file://localhost/" + uriPath
+	cleaned := filepath.ToSlash(filepath.Clean(path))
+	cleaned = strings.TrimPrefix(cleaned, "/")
+
+	// URL-encode path components while preserving slashes
+	parts := strings.Split(cleaned, "/")
+	for i, part := range parts {
+		parts[i] = url.PathEscape(part)
+	}
+	encodedPath := strings.Join(parts, "/")
+
+	return "file://localhost/" + encodedPath
 }
 
 func exportConvertTonality(key int) (string, error) {
