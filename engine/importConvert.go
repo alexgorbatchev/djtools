@@ -297,6 +297,10 @@ func importConvertPlaylist(library *lib.Library, playlists []playlist, playlistE
 }
 
 func populatePlaylists(playlistEntityList []playlistEntity, playlists []playlist) ([]playlist, error) {
+	if len(playlistEntityList) == 0 || len(playlists) == 0 {
+		return playlists, nil
+	}
+
 	playlistMap := make(map[int]int)
 	for i, playlist := range playlists {
 		playlistMap[playlist.id] = i
@@ -308,8 +312,14 @@ func populatePlaylists(playlistEntityList []playlistEntity, playlists []playlist
 	}
 
 	firstSongs, err := findFirstSongs(playlistEntityList)
-	if err != nil {
-		return nil, fmt.Errorf("error populating playlists: %v", err)
+	if err != nil || len(firstSongs) == 0 {
+		// Fallback: populate playlist tracks in entity database order
+		for _, entity := range playlistEntityList {
+			if idx, ok := playlistMap[entity.listId]; ok {
+				playlists[idx].songs = append(playlists[idx].songs, entity.trackId)
+			}
+		}
+		return playlists, nil
 	}
 
 	for _, track := range firstSongs {
@@ -317,16 +327,23 @@ func populatePlaylists(playlistEntityList []playlistEntity, playlists []playlist
 		trackId := track.trackId
 		listId := track.listId
 		nextEntityId := track.nextEntityId
-		playlists[playlistMap[listId]].songs = append(playlists[playlistMap[listId]].songs, trackId)
 
-		// iterate through playlist, adding songs in order until last song
-		for range len(playlistEntityList) { // failsafe in case there is no last song
-			if nextEntityId == 0 {
-				break
+		if idx, ok := playlistMap[listId]; ok {
+			playlists[idx].songs = append(playlists[idx].songs, trackId)
+
+			// iterate through playlist, adding songs in order until last song
+			for range len(playlistEntityList) { // failsafe in case there is no last song
+				if nextEntityId == 0 {
+					break
+				}
+				nextEntity, ok := playlistEntityMap[nextEntityId]
+				if !ok {
+					break
+				}
+				trackId = nextEntity.trackId
+				nextEntityId = nextEntity.nextEntityId
+				playlists[idx].songs = append(playlists[idx].songs, trackId)
 			}
-			trackId = playlistEntityMap[nextEntityId].trackId
-			nextEntityId = playlistEntityMap[nextEntityId].nextEntityId
-			playlists[playlistMap[listId]].songs = append(playlists[playlistMap[listId]].songs, trackId)
 		}
 	}
 
@@ -334,10 +351,14 @@ func populatePlaylists(playlistEntityList []playlistEntity, playlists []playlist
 }
 
 func sortPlaylists(playlists []playlist) ([]playlist, error) {
+	if len(playlists) == 0 {
+		return playlists, nil
+	}
 
 	i, err := findFirstPlaylist(playlists)
 	if err != nil {
-		return nil, fmt.Errorf("error sorting playlist: %v", err)
+		// Fallback to original order if nextListId linked list is not populated or cyclic
+		return playlists, nil
 	}
 
 	playlistMap := make(map[int]int)
@@ -346,13 +367,26 @@ func sortPlaylists(playlists []playlist) ([]playlist, error) {
 	}
 	var playlistsSorted []playlist
 	for range playlists {
-		playlistsSorted = append(playlistsSorted, playlists[playlistMap[i]])
-		i = playlists[playlistMap[i]].nextListId
+		j, exists := playlistMap[i]
+		if !exists {
+			break
+		}
+		playlistsSorted = append(playlistsSorted, playlists[j])
+		i = playlists[j].nextListId
 	}
+
+	if len(playlistsSorted) < len(playlists) {
+		return playlists, nil
+	}
+
 	return playlistsSorted, nil
 }
 
 func findFirstPlaylist(playlists []playlist) (int, error) {
+	if len(playlists) == 0 {
+		return 0, fmt.Errorf("NotFoundError: did not find the first playlist")
+	}
+
 	nextListIdMap := make(map[int]struct{})
 	for _, playlist := range playlists {
 		if playlist.nextListId != 0 {
@@ -370,6 +404,10 @@ func findFirstPlaylist(playlists []playlist) (int, error) {
 }
 
 func findFirstSongs(playlistEntityList []playlistEntity) ([]playlistEntity, error) {
+	if len(playlistEntityList) == 0 {
+		return nil, nil
+	}
+
 	var firstSongs []playlistEntity
 
 	nextEntityIdMap := make(map[int]struct{})
@@ -386,7 +424,7 @@ func findFirstSongs(playlistEntityList []playlistEntity) ([]playlistEntity, erro
 		}
 	}
 
-	if firstSongs == nil {
+	if len(firstSongs) == 0 {
 		return nil, fmt.Errorf("NotFoundError: did not find any first songs")
 	}
 
