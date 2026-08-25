@@ -1,7 +1,6 @@
 package rbxml_test
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -40,8 +39,7 @@ func loadXml(t *testing.T, path string) []byte {
 func TestExportInvalidPath(t *testing.T) {
 	var library lib.Library
 	err := rbxml.Export(&library, "invalid/path.xml", exportOptions)
-	assert.Equal(t, errors.New("error exporting library: open invalid/path.xml: no such file or directory"),
-		err, "invalid path should throw an error")
+	assert.ErrorContains(t, err, "error exporting library: open invalid/path.xml: no such file or directory")
 }
 
 func TestExport(t *testing.T) {
@@ -79,8 +77,7 @@ func TestExport(t *testing.T) {
 
 func TestImportInvalidPath(t *testing.T) {
 	_, err := rbxml.Import("invalid/path/library.xml")
-	assert.Equal(t, errors.New("error reading file: open invalid/path/library.xml: no such file or directory"),
-		err, "Invalid path should throw an error.")
+	assert.ErrorContains(t, err, "error reading file: open invalid/path/library.xml: no such file or directory")
 }
 
 func TestImport(t *testing.T) {
@@ -115,4 +112,137 @@ func TestImport(t *testing.T) {
 			assert.Equal(t, library, stub, "Library should match expected output.")
 		})
 	}
+}
+
+func TestDocument_GranularOperations(t *testing.T) {
+	doc := rbxml.NewDocument()
+	assert.Equal(t, "djtools", doc.Product.Name)
+
+	// Add track
+	track := rbxml.Track{
+		TrackId:  1,
+		Name:     "Test Track",
+		Artist:   "Test Artist",
+		Location: "file://localhost/music/test.mp3",
+	}
+	doc.AddTrack(track)
+	assert.Equal(t, int32(1), doc.Collection.Entries)
+
+	// Find by ID
+	found := doc.FindTrackByID(1)
+	assert.NotNil(t, found)
+	assert.Equal(t, "Test Track", found.Name)
+
+	// Find by ID not found
+	assert.Nil(t, doc.FindTrackByID(999))
+
+	// Find by Location
+	foundByLoc := doc.FindTrackByLocation("file://localhost/music/test.mp3")
+	assert.NotNil(t, foundByLoc)
+	assert.Equal(t, 1, foundByLoc.TrackId)
+
+	// Find by Location not found
+	assert.Nil(t, doc.FindTrackByLocation("file://localhost/missing.mp3"))
+
+	// Update track
+	track.Name = "Updated Track"
+	doc.AddTrack(track)
+	assert.Equal(t, int32(1), doc.Collection.Entries)
+	assert.Equal(t, "Updated Track", doc.FindTrackByID(1).Name)
+
+	// Remove track
+	doc.RemoveTrack(1)
+	assert.Equal(t, int32(0), doc.Collection.Entries)
+	assert.Nil(t, doc.FindTrackByID(1))
+
+	// Find Node in Playlists
+	rootNode := doc.FindNode("ROOT")
+	assert.NotNil(t, rootNode)
+	assert.Nil(t, doc.FindNode("NonExistentNode"))
+
+	// Save and Open Document
+	tempFile := filepath.Join(t.TempDir(), "roundtrip.xml")
+	doc.AddTrack(rbxml.Track{TrackId: 2, Name: "Saved Track"})
+	err := doc.Save(tempFile)
+	assert.NoError(t, err)
+
+	loadedDoc, err := rbxml.OpenDocument(tempFile)
+	assert.NoError(t, err)
+	assert.Equal(t, int32(1), loadedDoc.Collection.Entries)
+}
+
+func TestRbxml_ConversionsAndTonalityCoverage(t *testing.T) {
+	tonalities := []string{
+		"8B", "8A", "9B", "9A", "10B", "10A", "11B", "11A", "12B", "12A",
+		"1B", "1A", "2B", "2A", "3B", "3A", "4B", "4A", "5B", "5A", "6B", "6A", "7B", "7A",
+	}
+
+	for keyIdx, tonalityStr := range tonalities {
+		// Test round trip export and import via lib.Song
+		song := lib.Song{
+			SongID:   keyIdx + 1,
+			Title:    "Key Track " + tonalityStr,
+			Key:      keyIdx,
+			Path:     "/music/key_track.mp3",
+			Rating:   80,
+			Bpm:      120,
+			Filetype: "mp3",
+		}
+		library := lib.Library{
+			Songs: []lib.Song{song},
+		}
+
+		doc, err := rbxml.FromLibrary(&library)
+		assert.NoError(t, err)
+		assert.Equal(t, tonalityStr, doc.Collection.Tracks[0].Tonality)
+
+		importedLib, err := doc.ToLibrary()
+		assert.NoError(t, err)
+		assert.Equal(t, keyIdx, importedLib.Songs[0].Key)
+	}
+
+	// Ratings tests: 0, 20, 40, 60, 80, 100, and 1-5 scale
+	ratings := []int{0, 20, 40, 60, 80, 100, 1, 2, 3, 4, 5, 250, -1}
+	for _, r := range ratings {
+		song := lib.Song{
+			SongID:   1,
+			Title:    "Rating Track",
+			Path:     "/music/rating.mp3",
+			Rating:   r,
+			Bpm:      120,
+			Filetype: "wav",
+		}
+		library := lib.Library{Songs: []lib.Song{song}}
+		doc, err := rbxml.FromLibrary(&library)
+		assert.NoError(t, err)
+		assert.NotNil(t, doc)
+	}
+
+	// Long URI truncation test
+	longPath := "/music/" + string(make([]byte, 300)) + "verylongtrackname.mp3"
+	songLong := lib.Song{
+		SongID:   1,
+		Title:    "Long Path",
+		Path:     longPath,
+		Bpm:      120,
+		Filetype: "mp3",
+	}
+	docLong, err := rbxml.FromLibrary(&lib.Library{Songs: []lib.Song{songLong}})
+	assert.NoError(t, err)
+	assert.Contains(t, docLong.Collection.Tracks[0].Location, "file://localhost/")
+
+	// Nested node search
+	nestedNode := rbxml.Node{
+		NodeType: 0,
+		Name:     "Parent Folder",
+		Nodes: &[]rbxml.Node{
+			{
+				NodeType: 1,
+				Name:     "Deep Playlist",
+			},
+		},
+	}
+	docWithNested := rbxml.NewDocument()
+	docWithNested.Playlists.Node.Nodes = &[]rbxml.Node{nestedNode}
+	assert.NotNil(t, docWithNested.FindNode("Deep Playlist"))
 }

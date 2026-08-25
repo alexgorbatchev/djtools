@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -28,27 +27,27 @@ func importConvertSong(djPlaylists *djPlaylists) ([]lib.Song, error) {
 	for _, track := range djPlaylists.Collection.Tracks {
 		dateModified, err := dateToUnix(track.DateModified)
 		if err != nil {
-			return nil, fmt.Errorf("error converting song: %v", err)
+			return nil, fmt.Errorf("error converting song: %w", err)
 		}
 		dateAdded, err := dateToUnix(track.DateAdded)
 		if err != nil {
-			return nil, fmt.Errorf("error converting song: %v", err)
+			return nil, fmt.Errorf("error converting song: %w", err)
 		}
 		lastPlayed, err := dateToUnix(track.LastPlayed)
 		if err != nil {
-			return nil, fmt.Errorf("error converting song: %v", err)
+			return nil, fmt.Errorf("error converting song: %w", err)
 		}
 		rating, err := importConvertRating(track.Rating)
 		if err != nil {
-			return nil, fmt.Errorf("error converting song: %v", err)
+			return nil, fmt.Errorf("error converting song: %w", err)
 		}
 		path, err := uriToPath(track.Location)
 		if err != nil {
-			return nil, fmt.Errorf("error converting song: %v", err)
+			return nil, fmt.Errorf("error converting song: %w", err)
 		}
 		key, err := tonalityToInt(track.Tonality)
 		if err != nil {
-			return nil, fmt.Errorf("error converting song: %v", err)
+			return nil, fmt.Errorf("error converting song: %w", err)
 		}
 		var corrupt bool
 		if track.AverageBpm == 0 {
@@ -101,13 +100,11 @@ func importConvertPlaylists(djPlaylists *djPlaylists) []lib.Playlist {
 
 	var id int = 1 // playlists don't have ids, so they will be assigned incrementally
 
-	playlists, _ := importConvertSubPlaylists(djPlaylists.Playlists.Node.Nodes, &id)
-	return playlists
+	return importConvertSubPlaylists(djPlaylists.Playlists.Node.Nodes, &id)
 }
 
-func importConvertSubPlaylists(rbPlaylists *[]node, id *int) ([]lib.Playlist, []int) {
+func importConvertSubPlaylists(rbPlaylists *[]node, id *int) []lib.Playlist {
 	var playlists []lib.Playlist
-	var subSongs []int
 	for _, node := range *rbPlaylists {
 		playlist := lib.Playlist{
 			PlaylistID: *id,
@@ -115,27 +112,23 @@ func importConvertSubPlaylists(rbPlaylists *[]node, id *int) ([]lib.Playlist, []
 		}
 		*id++ // increment id
 
-		// populate songs if any
+		// populate direct songs if any
 		if node.Tracks != nil {
 			var songs []int
 			for _, track := range *node.Tracks {
 				songs = append(songs, int(track.Id))
-				subSongs = append(subSongs, int(track.Id))
 			}
 			playlist.Songs = songs
 		}
 
-		// populate playlists if any
+		// populate sub-playlists if any (do not concatenate into parent playlist)
 		if node.Nodes != nil {
-			var subPlaylistSongs []int
-			playlist.SubPlaylists, subPlaylistSongs = importConvertSubPlaylists(node.Nodes, id)
-			playlist.Songs = slices.Concat(playlist.Songs, subPlaylistSongs)
-			subSongs = slices.Concat(subSongs, subPlaylistSongs)
+			playlist.SubPlaylists = importConvertSubPlaylists(node.Nodes, id)
 		}
 		playlists = append(playlists, playlist)
 	}
 
-	return playlists, subSongs
+	return playlists
 }
 
 func importConvertGrid(track track) []lib.Marker {
@@ -185,7 +178,7 @@ func dateToUnix(date string) (int, error) {
 	}
 	t, err := time.Parse("2006-01-02", date)
 	if err != nil {
-		return 0, fmt.Errorf("error converting date to Unix timestamp: %v", err)
+		return 0, fmt.Errorf("error converting date to Unix timestamp: %w", err)
 	}
 	return int(t.Unix()), nil
 }
@@ -194,12 +187,12 @@ func uriToPath(uri string) (string, error) {
 	// Parse the URI
 	parsedURI, err := url.Parse(uri)
 	if err != nil {
-		return "", fmt.Errorf("error converting URI to filepath: %v", err)
+		return "", fmt.Errorf("error converting URI to filepath: %w", err)
 	}
 
 	// Ensure the scheme is "file"
 	if parsedURI.Scheme != "file" {
-		return "", fmt.Errorf("error converting URI to filepath: %v", err)
+		return "", fmt.Errorf("error converting URI to filepath: %w", err)
 	}
 
 	// Decode the path to handle any escaped characters
@@ -210,6 +203,8 @@ func uriToPath(uri string) (string, error) {
 
 func tonalityToInt(tonality string) (int, error) {
 	switch tonality {
+	case "":
+		return 0, nil
 	case "8B":
 		return 0, nil
 	case "8A":
@@ -259,7 +254,7 @@ func tonalityToInt(tonality string) (int, error) {
 	case "7A":
 		return 23, nil
 	}
-	return -1, fmt.Errorf("tonality '%s' is outside the accepted range", tonality)
+	return 0, nil // Fallback to 0 for unrecognized key
 }
 
 func importConvertRating(rating int32) (int, error) {
@@ -277,5 +272,11 @@ func importConvertRating(rating int32) (int, error) {
 	case 255:
 		return 100, nil
 	}
-	return -1, fmt.Errorf("NoMatchError: rating %d did not match convention. Must be 0, 51, 102, 153, 204, or 255", rating)
+	if rating >= 1 && rating <= 5 {
+		return int(rating * 20), nil
+	}
+	if rating > 0 && rating <= 100 {
+		return int(rating), nil
+	}
+	return 0, nil
 }

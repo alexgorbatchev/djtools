@@ -256,12 +256,12 @@ func exportConvertSong(library *lib.Library, options ExportOptions) ([]track, er
 	for _, song := range library.Songs {
 		rating, err := exportConvertRating(song.Rating)
 		if err != nil {
-			return nil, fmt.Errorf("error converting song rating: %v", err)
+			return nil, fmt.Errorf("error converting song rating: %w", err)
 		}
 		path := pathToURI(song.Path)
 		tonality, err := exportConvertTonality(song.Key)
 		if err != nil {
-			return nil, fmt.Errorf("error converting song tonality: %v", err)
+			return nil, fmt.Errorf("error converting song tonality: %w", err)
 		}
 		positionMarks := exportConvertPositionMarks(&song)
 		tempos := exportConvertGrid(&song)

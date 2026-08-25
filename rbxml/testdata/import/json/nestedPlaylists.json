@@ -125,11 +125,7 @@
     {
       "PlaylistID": 1,
       "Name": "Folder1",
-      "Songs": [
-        47763673,
-        234286363,
-        244521470
-      ],
+      "Songs": null,
       "SubPlaylists": [
         {
           "PlaylistID": 2,
