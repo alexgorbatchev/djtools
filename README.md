@@ -27,6 +27,7 @@ This repository is a maintained fork of [`nateranda/djtools`](https://github.com
 - Saved loops and loop colors
 - Beat grids and grid markers
 - Waveform cache data (`overviewWaveFormData`, `trackData`)
+- **Zero CGO**: Pure Go SQLite powered by `modernc.org/sqlite` — compiles and runs across macOS, Linux, and Windows without GCC or local C toolchains.
 
 ---
 

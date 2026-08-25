@@ -31,6 +31,7 @@ go vet ./...
 
 ## Key Rules & Conventions
 
+- **SQLite Driver:** Use `modernc.org/sqlite` (pure Go, CGO-free) so GCC/CGO is not required.
 - **Red/Green Development:** All new features or fixes must be accompanied by unit tests.
 - **Go Idioms:** Follow standard Go rules (`fmt.Errorf` with `%w`, table-driven tests, concise parameter names, no `panic`s on runtime errors).
 - **Error Handling:** Always wrap database errors with context describing what operation was being attempted.
