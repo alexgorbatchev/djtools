@@ -252,3 +252,47 @@ func TestExportInvalidPath(t *testing.T) {
 	err := engine.Export(lib.Library{}, invalidPath, engine.ExportOptions{})
 	assert.Error(t, err)
 }
+
+func TestExport_ConstraintErrors(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Duplicate track path violates UNIQUE (path) constraint
+	duplicateLib := lib.Library{
+		Songs: []lib.Song{
+			{SongID: 1, Title: "Track 1", Path: "same/path.mp3"},
+			{SongID: 2, Title: "Track 2", Path: "same/path.mp3"},
+		},
+	}
+	err := engine.Export(duplicateLib, tempDir, engine.ExportOptions{Overwrite: true})
+	assert.ErrorContains(t, err, "error exporting Tracks")
+
+	// Duplicate album art ID
+	duplicateArtLib := lib.Library{
+		AlbumArt: []lib.AlbumArt{
+			{ID: 1, Hash: "hash1", Data: []byte("a")},
+			{ID: 1, Hash: "hash2", Data: []byte("b")},
+		},
+	}
+	err = engine.Export(duplicateArtLib, tempDir, engine.ExportOptions{Overwrite: true})
+	assert.ErrorContains(t, err, "error exporting AlbumArt")
+
+	// Duplicate playlist ID
+	duplicatePLLib := lib.Library{
+		Playlists: []lib.Playlist{
+			{PlaylistID: 1, Name: "PL 1"},
+			{PlaylistID: 1, Name: "PL 2"},
+		},
+	}
+	err = engine.Export(duplicatePLLib, tempDir, engine.ExportOptions{Overwrite: true})
+	assert.ErrorContains(t, err, "error exporting Playlists")
+
+	// Duplicate smartlist UUID
+	duplicateSLLib := lib.Library{
+		Smartlists: []lib.Smartlist{
+			{ListUUID: "uuid-dup", Title: "SL 1"},
+			{ListUUID: "uuid-dup", Title: "SL 2"},
+		},
+	}
+	err = engine.Export(duplicateSLLib, tempDir, engine.ExportOptions{Overwrite: true})
+	assert.ErrorContains(t, err, "error exporting Smartlists")
+}
