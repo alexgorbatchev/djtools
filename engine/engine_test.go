@@ -2,7 +2,6 @@ package engine_test
 
 import (
 	"database/sql"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,7 +10,7 @@ import (
 	"github.com/nateranda/djtools/lib"
 	"github.com/stretchr/testify/assert"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 var fixturesDir string = filepath.Join("testdata", "import", "fixtures")
@@ -41,7 +40,8 @@ func generateDatabase(t *testing.T, fixturePath string) string {
 
 	// open and populate m.db with given fixture
 	path = filepath.Join(tempdir, "Database2", "m.db")
-	m, _ := sql.Open("sqlite3", path)
+	m, _ := sql.Open("sqlite", path)
+	defer m.Close()
 	err := m.Ping()
 	if err != nil {
 		t.Errorf("unexpected error creating test database: %v", err)
@@ -54,11 +54,14 @@ func generateDatabase(t *testing.T, fixturePath string) string {
 	}
 	query := string(queryByte)
 
-	m.Exec(query)
+	if _, err = m.Exec(query); err != nil {
+		t.Errorf("unexpected error executing m.db fixture: %v", err)
+	}
 
 	// open and populate hm.db with given fixture
 	path = filepath.Join(tempdir, "Database2", "hm.db")
-	hm, _ := sql.Open("sqlite3", path)
+	hm, _ := sql.Open("sqlite", path)
+	defer hm.Close()
 	err = hm.Ping()
 	if err != nil {
 		t.Errorf("unexpected error creating test database: %v", err)
@@ -71,15 +74,16 @@ func generateDatabase(t *testing.T, fixturePath string) string {
 	}
 	query = string(queryByte)
 
-	hm.Exec(query)
+	if _, err = hm.Exec(query); err != nil {
+		t.Errorf("unexpected error executing hm.db fixture: %v", err)
+	}
 
 	return tempdir
 }
 
 func TestImportInvalidPath(t *testing.T) {
 	_, err := engine.Import("invalid/path", defaultOptions)
-	assert.Equal(t, errors.New("error initializing m.db: unable to open database file: no such file or directory"),
-		err, "Invalid path should throw an error.")
+	assert.ErrorContains(t, err, "error initializing m.db", "Invalid path should throw an error.")
 }
 
 func TestImport(t *testing.T) {

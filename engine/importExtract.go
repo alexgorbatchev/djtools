@@ -50,7 +50,7 @@ func initDB(path string) (*sql.DB, *sql.DB, error) {
 	hmPath := filepath.Join(path, "Database2", "hm.db")
 
 	// Open and ping the m.db database
-	m, err := sql.Open("sqlite3", mPath)
+	m, err := sql.Open("sqlite", mPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error opening m.db: %v", err)
 	}
@@ -59,7 +59,7 @@ func initDB(path string) (*sql.DB, *sql.DB, error) {
 	}
 
 	// Open and ping the hm.db database
-	hm, err := sql.Open("sqlite3", hmPath)
+	hm, err := sql.Open("sqlite", hmPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error opening hm.db: %v", err)
 	}

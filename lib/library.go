@@ -33,56 +33,56 @@ type Loop struct {
 
 // Song is the metadata, analysis data, and saved cues/loops for a song.
 type Song struct {
-	SongID                 int      // song id used by software
-	Title                  string   // title
-	Artist                 string   // artist
-	Composer               string   // composer
-	Album                  string   // album song is from
-	Grouping               string   // grouping
-	Genre                  string   // genre
-	Filetype               string   // filetype, abbreviated lowercase
-	Size                   int      // file size, bytes
-	Length                 float32  // song length, seconds
-	TrackNumber            int      // number in album
-	Year                   int      // release year
-	Bpm                    float32  // beats per minute
-	BpmAnalyzed            float64  // analyzed floating point BPM
-	DateModified           int      // date last modified, unix
-	DateAdded              int      // date added to library, unix
-	DateCreated            int      // date created, unix
-	Bitrate                int      // bitrate, kbps
-	SampleRate             float64  // sample rate, hz
-	Comment                string   // comment
-	PlayCount              int      // play count
-	LastPlayed             int      // date last played, unix
-	TimeLastPlayed         int      // timestamp last played
-	IsPlayed               bool     // played status
-	PlayedIndicator        int      // played indicator
-	Rating                 int      // rating in multiples of 20: 0*=0, 1*=20... 5*=100
-	Path                   string   // song absolute path
-	Remixer                string   // remixer
-	Key                    int      // key in int representation of camelot, 0-indexed: 0=8B, 1=8A, 2=9B... 23=7A
-	Label                  string   // label
-	Mix                    string   // mix
-	Color                  string   // color, hex code
-	Cue                    float64  // cue location, seconds
-	Grid                   []Marker // slice of Marker structs, ordered by start position
-	Cues                   []HotCue // slice of Cue structs, unordered
-	Loops                  []Loop   // slice of Loop structs, unordered
-	Corrupt                bool     // is the song file corrupted?
-	IsAnalyzed             bool     // whether track is analyzed
-	IsBeatGridLocked       bool     // whether beatgrid is locked
-	ExplicitLyrics         bool     // explicit content flag
-	OriginDatabaseUUID     string   // UUID of origin database
-	OriginTrackID          int      // track ID in origin database
-	StreamingSource        string   // streaming provider source
-	URI                    string   // streaming URI or track path URI
-	StreamingFlags         int      // streaming flags
-	AlbumArtID             int      // album art reference ID
-	AlbumArtSourceHash     string   // album art source hash
-	OverviewWaveFormData   []byte   // overview waveform binary cache
-	TrackData              []byte   // detailed track waveform / analysis binary cache
-	ActiveOnLoadLoops      int      // loop position active on load
+	SongID               int      // song id used by software
+	Title                string   // title
+	Artist               string   // artist
+	Composer             string   // composer
+	Album                string   // album song is from
+	Grouping             string   // grouping
+	Genre                string   // genre
+	Filetype             string   // filetype, abbreviated lowercase
+	Size                 int      // file size, bytes
+	Length               float32  // song length, seconds
+	TrackNumber          int      // number in album
+	Year                 int      // release year
+	Bpm                  float32  // beats per minute
+	BpmAnalyzed          float64  // analyzed floating point BPM
+	DateModified         int      // date last modified, unix
+	DateAdded            int      // date added to library, unix
+	DateCreated          int      // date created, unix
+	Bitrate              int      // bitrate, kbps
+	SampleRate           float64  // sample rate, hz
+	Comment              string   // comment
+	PlayCount            int      // play count
+	LastPlayed           int      // date last played, unix
+	TimeLastPlayed       int      // timestamp last played
+	IsPlayed             bool     // played status
+	PlayedIndicator      int      // played indicator
+	Rating               int      // rating in multiples of 20: 0*=0, 1*=20... 5*=100
+	Path                 string   // song absolute path
+	Remixer              string   // remixer
+	Key                  int      // key in int representation of camelot, 0-indexed: 0=8B, 1=8A, 2=9B... 23=7A
+	Label                string   // label
+	Mix                  string   // mix
+	Color                string   // color, hex code
+	Cue                  float64  // cue location, seconds
+	Grid                 []Marker // slice of Marker structs, ordered by start position
+	Cues                 []HotCue // slice of Cue structs, unordered
+	Loops                []Loop   // slice of Loop structs, unordered
+	Corrupt              bool     // is the song file corrupted?
+	IsAnalyzed           bool     // whether track is analyzed
+	IsBeatGridLocked     bool     // whether beatgrid is locked
+	ExplicitLyrics       bool     // explicit content flag
+	OriginDatabaseUUID   string   // UUID of origin database
+	OriginTrackID        int      // track ID in origin database
+	StreamingSource      string   // streaming provider source
+	URI                  string   // streaming URI or track path URI
+	StreamingFlags       int      // streaming flags
+	AlbumArtID           int      // album art reference ID
+	AlbumArtSourceHash   string   // album art source hash
+	OverviewWaveFormData []byte   // overview waveform binary cache
+	TrackData            []byte   // detailed track waveform / analysis binary cache
+	ActiveOnLoadLoops    int      // loop position active on load
 }
 
 // AlbumArt stores album artwork binary data and hashes.
@@ -114,9 +114,9 @@ type Playlist struct {
 // Library is the entire library of a DJ software.
 type Library struct {
 	DatabaseUUID       string      // unique identifier of database
-	SchemaVersionMajor  int         // database major schema version
-	SchemaVersionMinor  int         // database minor schema version
-	SchemaVersionPatch  int         // database patch schema version
+	SchemaVersionMajor int         // database major schema version
+	SchemaVersionMinor int         // database minor schema version
+	SchemaVersionPatch int         // database patch schema version
 	Songs              []Song      // slice of Song structs, unordered
 	Playlists          []Playlist  // slice of Playlist structs, ordered by position
 	Smartlists         []Smartlist // slice of Smartlist rules

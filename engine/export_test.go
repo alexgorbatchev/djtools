@@ -14,9 +14,9 @@ func TestExportAndRoundTripImport(t *testing.T) {
 
 	originalLib := lib.Library{
 		DatabaseUUID:       "test-uuid-12345",
-		SchemaVersionMajor:  2,
-		SchemaVersionMinor:  20,
-		SchemaVersionPatch:  0,
+		SchemaVersionMajor: 2,
+		SchemaVersionMinor: 20,
+		SchemaVersionPatch: 0,
 		AlbumArt: []lib.AlbumArt{
 			{
 				ID:   1,

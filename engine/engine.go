@@ -5,13 +5,16 @@ import (
 	"bytes"
 	"compress/zlib"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
+	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/nateranda/djtools/lib"
+	_ "modernc.org/sqlite"
 )
 
 // ImportOptions contains the options used when importing an Engine library.
@@ -46,6 +49,74 @@ type albumArtEntry struct {
 	data []byte
 }
 
+type nullTime struct {
+	Time  time.Time
+	Valid bool
+}
+
+func (nt *nullTime) Scan(value any) error {
+	if value == nil {
+		nt.Time, nt.Valid = time.Time{}, false
+		return nil
+	}
+	switch v := value.(type) {
+	case time.Time:
+		nt.Time, nt.Valid = v, true
+		return nil
+	case int64:
+		nt.Time, nt.Valid = time.Unix(v, 0).UTC(), true
+		return nil
+	case int:
+		nt.Time, nt.Valid = time.Unix(int64(v), 0).UTC(), true
+		return nil
+	case int32:
+		nt.Time, nt.Valid = time.Unix(int64(v), 0).UTC(), true
+		return nil
+	case uint64:
+		nt.Time, nt.Valid = time.Unix(int64(v), 0).UTC(), true
+		return nil
+	case float64:
+		nt.Time, nt.Valid = time.Unix(int64(v), 0).UTC(), true
+		return nil
+	case string:
+		if v == "" {
+			nt.Time, nt.Valid = time.Time{}, false
+			return nil
+		}
+		layouts := []string{
+			"2006-01-02 15:04:05.999999999-07:00",
+			"2006-01-02 15:04:05.999999999",
+			"2006-01-02 15:04:05",
+			time.RFC3339Nano,
+			time.RFC3339,
+			"2006-01-02T15:04:05",
+			"2006-01-02",
+		}
+		for _, layout := range layouts {
+			if t, err := time.Parse(layout, v); err == nil {
+				nt.Time, nt.Valid = t, true
+				return nil
+			}
+		}
+		if ts, err := strconv.ParseInt(v, 10, 64); err == nil {
+			nt.Time, nt.Valid = time.Unix(ts, 0).UTC(), true
+			return nil
+		}
+		return fmt.Errorf("unable to parse datetime string: %q", v)
+	case []byte:
+		return nt.Scan(string(v))
+	default:
+		return fmt.Errorf("unsupported type for nullTime: %T", value)
+	}
+}
+
+func (nt nullTime) Value() (driver.Value, error) {
+	if !nt.Valid {
+		return nil, nil
+	}
+	return nt.Time, nil
+}
+
 type songNull struct {
 	id                 sql.NullInt64
 	title              sql.NullString
@@ -59,7 +130,7 @@ type songNull struct {
 	year               sql.NullInt64
 	bpm                sql.NullFloat64
 	bpmAnalyzed        sql.NullFloat64
-	dateAdded          sql.NullTime
+	dateAdded          nullTime
 	bitrate            sql.NullInt64
 	comment            sql.NullString
 	rating             sql.NullInt64
@@ -67,12 +138,12 @@ type songNull struct {
 	remixer            sql.NullString
 	key                sql.NullInt32
 	label              sql.NullString
-	lastEditTime       sql.NullTime
+	lastEditTime       nullTime
 	albumArtId         sql.NullInt64
-	timeLastPlayed     sql.NullTime
+	timeLastPlayed     nullTime
 	isPlayed           sql.NullBool
 	isAnalyzed         sql.NullBool
-	dateCreated        sql.NullTime
+	dateCreated        nullTime
 	playedIndicator    sql.NullInt64
 	streamingSource    sql.NullString
 	uri                sql.NullString
@@ -91,13 +162,13 @@ type songHistory struct {
 }
 
 type performanceDataEntry struct {
-	id                      int
-	beatDataBlob            []byte
-	quickCuesBlob           []byte
-	loopsBlob               []byte
-	trackDataBlob           []byte
+	id                       int
+	beatDataBlob             []byte
+	quickCuesBlob            []byte
+	loopsBlob                []byte
+	trackDataBlob            []byte
 	overviewWaveFormDataBlob []byte
-	activeOnLoadLoops       sql.NullInt64
+	activeOnLoadLoops        sql.NullInt64
 }
 
 type playlist struct {

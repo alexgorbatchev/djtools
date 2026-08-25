@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/nateranda/djtools/lib"
+	_ "modernc.org/sqlite"
 )
 
 // ExportOptions options for exporting an Engine library database.
@@ -34,13 +34,13 @@ func Export(library lib.Library, path string, options ExportOptions) error {
 		_ = os.Remove(hmPath)
 	}
 
-	m, err := sql.Open("sqlite3", mPath)
+	m, err := sql.Open("sqlite", mPath)
 	if err != nil {
 		return fmt.Errorf("error opening m.db for export: %w", err)
 	}
 	defer m.Close()
 
-	hm, err := sql.Open("sqlite3", hmPath)
+	hm, err := sql.Open("sqlite", hmPath)
 	if err != nil {
 		return fmt.Errorf("error opening hm.db for export: %w", err)
 	}
