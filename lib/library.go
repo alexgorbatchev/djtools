@@ -128,7 +128,7 @@ type Library struct {
 func (library *Library) Save(path string) error {
 	file, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("unexpected error saving library stub: %v", err)
+		return fmt.Errorf("unexpected error saving library stub: %w", err)
 	}
 	defer file.Close()
 
@@ -136,7 +136,7 @@ func (library *Library) Save(path string) error {
 	encoder.SetIndent("", "  ")
 	err = encoder.Encode(library)
 	if err != nil {
-		return fmt.Errorf("unexpected error saving library stub: %v", err)
+		return fmt.Errorf("unexpected error saving library stub: %w", err)
 	}
 	return nil
 }
@@ -146,14 +146,14 @@ func (library *Library) Save(path string) error {
 func (library *Library) Load(path string) error {
 	file, err := os.Open(path)
 	if err != nil {
-		return fmt.Errorf("unexpected error loading library stub: %v", err)
+		return fmt.Errorf("unexpected error loading library stub: %w", err)
 	}
 	defer file.Close()
 
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(library)
 	if err != nil {
-		return fmt.Errorf("unexpected error loading library stub: %v", err)
+		return fmt.Errorf("unexpected error loading library stub: %w", err)
 	}
 	return nil
 }
@@ -179,17 +179,15 @@ func (l *Library) SortSongs() {
 
 // CheckCorruptedSongs removes songs marked as corrupted from the Library
 func (l *Library) CheckCorruptedSongs() {
-	for i, song := range l.Songs {
-		// this is expensive, but it should happen rarely so it's ok
+	var clean []Song
+	for _, song := range l.Songs {
 		if song.Corrupt {
-			// remove song from library.Songs (doesn't preserve order)
-			l.Songs[i] = l.Songs[len(l.Songs)-1]
-			l.Songs = l.Songs[:len(l.Songs)-1]
-
-			// remove song from playlists
 			l.Playlists = removeSongFromPlaylists(l.Playlists, song.SongID)
+		} else {
+			clean = append(clean, song)
 		}
 	}
+	l.Songs = clean
 }
 
 func removeSongFromPlaylists(playlists []Playlist, songID int) []Playlist {
@@ -208,4 +206,88 @@ func removeSongFromPlaylists(playlists []Playlist, songID int) []Playlist {
 	}
 
 	return playlists
+}
+
+// FindSongByID finds a song in the library by its SongID. Returns nil if not found.
+func (l *Library) FindSongByID(id int) *Song {
+	for i := range l.Songs {
+		if l.Songs[i].SongID == id {
+			return &l.Songs[i]
+		}
+	}
+	return nil
+}
+
+// FindSongByPath finds a song in the library by its exact filepath. Returns nil if not found.
+func (l *Library) FindSongByPath(path string) *Song {
+	for i := range l.Songs {
+		if l.Songs[i].Path == path {
+			return &l.Songs[i]
+		}
+	}
+	return nil
+}
+
+// FindSongByTitle finds the first song with a matching title (case-insensitive).
+func (l *Library) FindSongByTitle(title string) *Song {
+	for i := range l.Songs {
+		if l.Songs[i].Title == title {
+			return &l.Songs[i]
+		}
+	}
+	return nil
+}
+
+// FindPlaylistByID searches recursively for a playlist with the given PlaylistID.
+func (l *Library) FindPlaylistByID(id int) *Playlist {
+	var search func(playlists []Playlist) *Playlist
+	search = func(playlists []Playlist) *Playlist {
+		for i := range playlists {
+			if playlists[i].PlaylistID == id {
+				return &playlists[i]
+			}
+			if len(playlists[i].SubPlaylists) > 0 {
+				if found := search(playlists[i].SubPlaylists); found != nil {
+					return found
+				}
+			}
+		}
+		return nil
+	}
+	return search(l.Playlists)
+}
+
+// FindPlaylistByName searches recursively for a playlist with the given name.
+func (l *Library) FindPlaylistByName(name string) *Playlist {
+	var search func(playlists []Playlist) *Playlist
+	search = func(playlists []Playlist) *Playlist {
+		for i := range playlists {
+			if playlists[i].Name == name {
+				return &playlists[i]
+			}
+			if len(playlists[i].SubPlaylists) > 0 {
+				if found := search(playlists[i].SubPlaylists); found != nil {
+					return found
+				}
+			}
+		}
+		return nil
+	}
+	return search(l.Playlists)
+}
+
+// AddSong appends a song to the library.
+func (l *Library) AddSong(song Song) {
+	l.Songs = append(l.Songs, song)
+}
+
+// RemoveSong removes a song by ID from library songs and all playlists.
+func (l *Library) RemoveSong(id int) {
+	for i := range l.Songs {
+		if l.Songs[i].SongID == id {
+			l.Songs = append(l.Songs[:i], l.Songs[i+1:]...)
+			break
+		}
+	}
+	l.Playlists = removeSongFromPlaylists(l.Playlists, id)
 }
