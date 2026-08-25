@@ -41,7 +41,54 @@ go get github.com/alexgorbatchev/djtools
 
 ## Usage
 
-Below illustrates basic usage of `djtools`. This example imports an Engine DJ library, filters playlists, and exports the collection to both Rekordbox XML and Engine DJ SQLite database format.
+### 1. Granular In-Place Engine DJ Operations (Recommended)
+
+`*engine.DB` allows direct, low-latency queries and mutations on Engine DJ collections without batch re-serialization:
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/alexgorbatchev/djtools/engine"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Open Engine DJ database directory
+	db, err := engine.Open("/path/to/Engine Library")
+	if err != nil {
+		log.Fatalf("Error opening Engine database: %v", err)
+	}
+	defer db.Close()
+
+	// Find and update a single track
+	track, err := db.FindTrack(ctx, "Strobe")
+	if err != nil {
+		log.Fatalf("Track not found: %v", err)
+	}
+	track.Rating = 100
+	if err := db.UpdateTrack(ctx, track); err != nil {
+		log.Fatalf("Error updating track: %v", err)
+	}
+
+	// Add track to playlist with linked-list ordering
+	playlist, err := db.CreatePlaylist(ctx, "Favorites", 0, false)
+	if err != nil {
+		log.Fatalf("Error creating playlist: %v", err)
+	}
+	if _, err := db.AddTrackToPlaylist(ctx, playlist.ID, track.ID); err != nil {
+		log.Fatalf("Error adding track to playlist: %v", err)
+	}
+}
+```
+
+### 2. Whole-Library Batch Import & Export
+
+Below illustrates batch usage of `djtools` for cross-format migration. This example imports an Engine DJ library, filters playlists, and exports the collection to both Rekordbox XML and Engine DJ SQLite database format.
 
 ```go
 package main
@@ -72,7 +119,8 @@ func main() {
 	}
 
 	// Export to a Rekordbox XML file
-	if err := rbxml.Export(&library, "/path/to/rekordbox.xml"); err != nil {
+	exportOpts := rbxml.ExportOptions{UseUTC: true}
+	if err := rbxml.Export(&library, "/path/to/rekordbox.xml", exportOpts); err != nil {
 		log.Fatalf("Error exporting Rekordbox XML: %v", err)
 	}
 

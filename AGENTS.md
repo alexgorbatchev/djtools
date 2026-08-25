@@ -23,10 +23,10 @@ go vet ./...
 
 ## Architecture & Package Topology
 
-- `engine/`: Engine DJ SQLite database (`m.db`, `p.db`, `hm.db`) import, extraction, conversion, and export logic.
-- `rbxml/`: Rekordbox XML import and export logic.
-- `serato/`: Serato library import/extraction logic.
-- `lib/`: Canonical core data models (`Library`, `Song`, `Playlist`, `HotCue`, `Loop`, `Marker`, `Smartlist`, `AlbumArt`) shared across all formats.
+- `engine/`: Granular in-place `*engine.DB` operations (Track, Playlist, PlaylistEntity linked-lists, AlbumArt, PerformanceData) and SQLite (`m.db`, `hm.db`) import/export logic.
+- `rbxml/`: Rekordbox XML document (`Document`, `Track`, `Node`) inspection, mutation, import, and export logic.
+- `serato/`: Serato library crate extraction, binary `.crate` encoding/decoding, and ID3 GEOB marker parsing.
+- `lib/`: Canonical core data models (`Library`, `Song`, `Playlist`, `HotCue`, `Loop`, `Marker`, `Smartlist`, `AlbumArt`) and search/manipulation helpers.
 - `engine-to-rekordbox/`: Standalone TUI/CLI sync tool (`engine-to-rekordbox/AGENTS.md`).
 
 ## Key Rules & Conventions
