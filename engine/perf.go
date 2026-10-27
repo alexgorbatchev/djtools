@@ -189,6 +189,10 @@ func qUncompress(file []byte) ([]byte, error) {
 		return nil, fmt.Errorf("error uncompressing file: blob must contain 5 or more bytes")
 	}
 	uncompressLength := binary.BigEndian.Uint32(file[:4])
+	const maxPerformanceBytes = 128 << 20
+	if uncompressLength > maxPerformanceBytes {
+		return nil, errors.New("performance blob exceeds decompression limit")
+	}
 	buffer := bytes.NewBuffer(file[4:])
 	r, err := zlib.NewReader(buffer)
 	if err != nil {
@@ -197,7 +201,7 @@ func qUncompress(file []byte) ([]byte, error) {
 	defer r.Close()
 
 	var out bytes.Buffer
-	if _, err := io.Copy(&out, r); err != nil {
+	if _, err := io.Copy(&out, io.LimitReader(r, int64(uncompressLength)+1)); err != nil {
 		return nil, fmt.Errorf("decompressing zlib stream: %w", err)
 	}
 
@@ -303,94 +307,6 @@ func gridFromBeatData(sampleRate float64, enGrid []marker) []lib.Marker {
 	return grid
 }
 
-func cuesFromBlob(sampleRate float64, blob []byte) (cueData, error) {
-	var blobCueData cueData
-	i := 8 // byte index, skipping number of cues (always 8)
-
-	for pos := range 8 {
-		if len(blob) <= i {
-			break
-		}
-		labelLength := int(blob[i])
-		if labelLength == 0 {
-			i += 13
-			continue
-		}
-		i++
-		if len(blob) < i+labelLength+12 {
-			break
-		}
-		var cue lib.HotCue
-		cue.Position = pos + 1
-		cue.Name = string(blob[i : i+labelLength])
-		i += labelLength
-		cue.Offset = math.Float64frombits(binary.BigEndian.Uint64(blob[i:i+8])) / sampleRate
-		i += 9 // skip 1-byte alpha channel
-		r := int(blob[i])
-		i++
-		g := int(blob[i])
-		i++
-		b := int(blob[i])
-		i++
-		color, err := lib.RgbToHex(r, g, b)
-		if err != nil {
-			return cueData{}, fmt.Errorf("extracting cues from cueData blob: %w", err)
-		}
-		cue.Color = color
-		blobCueData.cues = append(blobCueData.cues, cue)
-	}
-
-	if len(blob) >= i+17 {
-		blobCueData.cueModified = math.Float64frombits(binary.BigEndian.Uint64(blob[i:i+8])) / sampleRate
-		i += 9
-		blobCueData.cueOriginal = math.Float64frombits(binary.BigEndian.Uint64(blob[i:i+8])) / sampleRate
-	}
-
-	return blobCueData, nil
-}
-
-func loopsFromBlob(sampleRate float64, blob []byte) ([]lib.Loop, error) {
-	var loops []lib.Loop
-	i := 8 // byte index, skipping number of loops (always 8)
-	for pos := range 8 {
-		if len(blob) <= i {
-			break
-		}
-		labelLength := int(blob[i])
-		if labelLength == 0 {
-			i += 24
-			continue
-		}
-		i++
-		if len(blob) < i+labelLength+22 {
-			break
-		}
-		var loop lib.Loop
-		loop.Position = pos + 1
-		loop.Name = string(blob[i : i+labelLength])
-		i += labelLength
-		loop.Start = math.Float64frombits(binary.LittleEndian.Uint64(blob[i:i+8])) / sampleRate
-		i += 8
-		loop.End = math.Float64frombits(binary.LittleEndian.Uint64(blob[i:i+8])) / sampleRate
-		i += 8
-		i += 3 // skip alpha and set bytes
-		r := int(blob[i])
-		i++
-		g := int(blob[i])
-		i++
-		b := int(blob[i])
-		i++
-		color, err := lib.RgbToHex(r, g, b)
-		if err != nil {
-			return nil, fmt.Errorf("extracting loops from loops blob: %w", err)
-		}
-		loop.Color = color
-		loops = append(loops, loop)
-	}
-
-	return loops, nil
-}
-
 func createBeatDataBlob(sampleRate float64, grid []lib.Marker) []byte {
 	var buf bytes.Buffer
 	var b8 [8]byte
@@ -471,7 +387,10 @@ func createQuickCuesBlob(sampleRate float64, mainCue float64, cues []lib.HotCue)
 			buf.WriteByte(byte(g))
 			buf.WriteByte(byte(b))
 		} else {
-			buf.Write(make([]byte, 13))
+			buf.WriteByte(0)
+			binary.BigEndian.PutUint64(b8[:], math.Float64bits(-1))
+			buf.Write(b8[:])
+			buf.Write(make([]byte, 4))
 		}
 	}
 
@@ -490,7 +409,7 @@ func createLoopsBlob(sampleRate float64, loops []lib.Loop) []byte {
 	var buf bytes.Buffer
 	var b8 [8]byte
 
-	binary.BigEndian.PutUint64(b8[:], 8)
+	binary.LittleEndian.PutUint64(b8[:], 8)
 	buf.Write(b8[:])
 
 	loopMap := make(map[int]lib.Loop)
@@ -510,7 +429,7 @@ func createLoopsBlob(sampleRate float64, loops []lib.Loop) []byte {
 			binary.LittleEndian.PutUint64(b8[:], math.Float64bits(l.End*sampleRate))
 			buf.Write(b8[:])
 
-			buf.Write(make([]byte, 3))
+			buf.Write([]byte{1, 1, 255})
 
 			r, g, b, err := lib.HexToRgb(l.Color)
 			if err != nil {
@@ -520,7 +439,11 @@ func createLoopsBlob(sampleRate float64, loops []lib.Loop) []byte {
 			buf.WriteByte(byte(g))
 			buf.WriteByte(byte(b))
 		} else {
-			buf.Write(make([]byte, 24))
+			buf.WriteByte(0)
+			binary.LittleEndian.PutUint64(b8[:], math.Float64bits(-1))
+			buf.Write(b8[:])
+			buf.Write(b8[:])
+			buf.Write(make([]byte, 6))
 		}
 	}
 
