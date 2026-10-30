@@ -14,6 +14,9 @@ go test -v -race ./...
 # Run tests for a specific package
 go test -v ./engine
 
+# Compare the beat-grid encoder with Engine DJ's native writer (fixtures are not distributed with djtools)
+DJTOOLS_ENGINE_FIXTURES=/path/to/engine-dj-app/tests/fixtures go test -v -run NativeWriter ./engine
+
 # Format code
 go fmt ./...
 
