@@ -84,7 +84,7 @@ func TestImport(t *testing.T) {
 	tests := []test{
 		{"Empty", "empty.json", "empty.xml", false},
 		{"Songs", "songs.json", "songs.xml", false},
-		{"CorruptSong", "corruptSong.json", "corruptSong.xml", false},
+		{"UnanalyzedSong", "unanalyzedSong.json", "unanalyzedSong.xml", false},
 		{"CuesLoops", "cuesLoops.json", "cuesLoops.xml", false},
 		{"Playlists", "playlists.json", "playlists.xml", false},
 		{"NestedPlaylists", "nestedPlaylists.json", "nestedPlaylists.xml", false},

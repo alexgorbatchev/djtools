@@ -1,6 +1,17 @@
 {
   "Songs": [
     {
+      "SongID": 7598110,
+      "Title": "           ",
+      "Filetype": "MP3 File",
+      "Size": 9758626,
+      "DateAdded": 1745280000,
+      "Bitrate": 320,
+      "SampleRate": 44100,
+      "Path": "/Users/nateranda/Music/Test Music/Choopsie - Distance.mp3",
+      "Key": 17
+    },
+    {
       "SongID": 47763673,
       "Title": "B Somebody (X CLUB. Remix)",
       "Artist": "SG Lewis, Chloé Caillet, X CLUB.",

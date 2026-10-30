@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -49,10 +50,6 @@ func importConvertSong(djPlaylists *djPlaylists) ([]lib.Song, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error converting song: %w", err)
 		}
-		var corrupt bool
-		if track.AverageBpm == 0 {
-			corrupt = true
-		}
 		markers := importConvertGrid(track)
 		cues, loops := importConvertCuesLoops(track)
 		song := lib.Song{
@@ -86,7 +83,6 @@ func importConvertSong(djPlaylists *djPlaylists) ([]lib.Song, error) {
 			Grid:         markers,
 			Cues:         cues,
 			Loops:        loops,
-			Corrupt:      corrupt,
 		}
 		songs = append(songs, song)
 	}
@@ -184,20 +180,34 @@ func dateToUnix(date string) (int, error) {
 }
 
 func uriToPath(uri string) (string, error) {
-	// Parse the URI
-	parsedURI, err := url.Parse(uri)
+	u, err := url.Parse(uri)
 	if err != nil {
 		return "", fmt.Errorf("error converting URI to filepath: %w", err)
 	}
-
-	// Ensure the scheme is "file"
-	if parsedURI.Scheme != "file" {
-		return "", fmt.Errorf("error converting URI to filepath: %w", err)
+	if !strings.EqualFold(u.Scheme, "file") || u.Opaque != "" {
+		return "", fmt.Errorf("location must be an absolute file URI")
 	}
-
-	// Decode the path to handle any escaped characters
-	path := parsedURI.Path
-	path = strings.ReplaceAll(path, "/", string(filepath.Separator)) // Adjust for OS-specific separators
+	if u.Host != "" && !strings.EqualFold(u.Host, "localhost") {
+		return "", fmt.Errorf("remote file URI authorities are unsupported")
+	}
+	if u.User != nil || u.RawQuery != "" || u.ForceQuery || strings.Contains(uri, "#") {
+		return "", fmt.Errorf("file URI must not contain credentials, a query, or a fragment")
+	}
+	// URL.Path is already decoded. A second unescape would alter literal percent sequences.
+	path := u.Path
+	if strings.ContainsRune(path, 0) {
+		return "", fmt.Errorf("file URI contains a null byte")
+	}
+	if runtime.GOOS == "windows" {
+		if len(path) < 4 || path[0] != '/' || path[2] != ':' || path[3] != '/' || strings.Contains(path, `\`) {
+			return "", fmt.Errorf("file URI must identify an absolute native drive path")
+		}
+		path = path[1:]
+	}
+	path = filepath.FromSlash(path)
+	if !filepath.IsAbs(path) {
+		return "", fmt.Errorf("file URI must identify an absolute native path")
+	}
 	return path, nil
 }
 

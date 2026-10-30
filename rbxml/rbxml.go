@@ -46,7 +46,7 @@ type Track struct {
 	TrackNumber  int32           `xml:"TrackNumber,attr,omitempty"`
 	Year         int32           `xml:"Year,attr,omitempty"`
 	AverageBpm   float64         `xml:"AverageBpm,attr,omitempty"`
-	DateModified string          `xml:"DateModidied,attr,omitempty"` // yyyy-mm-dd
+	DateModified string          `xml:"DateModified,attr,omitempty"` // yyyy-mm-dd
 	DateAdded    string          `xml:"DateAdded,attr,omitempty"`    // yyyy-mm-dd
 	BitRate      int32           `xml:"BitRate,attr,omitempty"`
 	SampleRate   float64         `xml:"SampleRate,attr,omitempty"`
