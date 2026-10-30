@@ -219,3 +219,25 @@ func TestUpdatePerformanceDataEncodesGridsToTheTrackLength(t *testing.T) {
 	err = db.UpdatePerformanceData(ctx, &PerformanceData{TrackID: id, BeatGrid: []lib.Marker{{StartPosition: 0}}})
 	assert.True(t, errors.Is(err, ErrInvalidBeatGrid))
 }
+
+func TestLaterMarkersKeepTheirOwnPositionInTheBar(t *testing.T) {
+	// Seven beats separate the markers, but the second marker starts a bar: the first segment keeps eight beats.
+	raw, err := createBeatDataBlob(44100, 20*44100, []lib.Marker{
+		{StartPosition: 0, Bpm: 120, BeatNumber: 0},
+		{StartPosition: 3.4, Bpm: 128, BeatNumber: 0},
+	})
+	require.NoError(t, err)
+	data, err := decodeBeatPayload(raw)
+	require.NoError(t, err)
+	assert.Equal(t, int64(8), data.Adjusted[1].Beat)
+	assert.Equal(t, uint32(8), data.Adjusted[0].BeatsUntilNext)
+	// A marker so close that no positive count reaches its bar position falls on the next one that does.
+	raw, err = createBeatDataBlob(44100, 20*44100, []lib.Marker{
+		{StartPosition: 0, Bpm: 120, BeatNumber: 0},
+		{StartPosition: 0.1, Bpm: 120, BeatNumber: 0},
+	})
+	require.NoError(t, err)
+	data, err = decodeBeatPayload(raw)
+	require.NoError(t, err)
+	assert.Equal(t, int64(4), data.Adjusted[1].Beat)
+}

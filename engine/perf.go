@@ -289,7 +289,10 @@ func beatAnchorsFromMarkers(sampleRate, sampleLimit float64, grid []lib.Marker) 
 		samplesPerBeat := sampleRate * 60 / m.Bpm
 		var beats float64
 		if i+1 < len(grid) {
-			beats = math.Round((grid[i+1].StartPosition*sampleRate - sample) / samplesPerBeat)
+			// The next marker states its own position in the bar, so land on the nearest whole number of beats
+			// that agrees with it instead of carrying rounding drift into later bars.
+			exact := (grid[i+1].StartPosition*sampleRate - sample) / samplesPerBeat
+			beats = barAlignedBeats(beat, exact, beatInBar(int64(grid[i+1].BeatNumber)))
 		} else {
 			beats = math.Ceil((sampleLimit - sample) / samplesPerBeat)
 		}
@@ -305,6 +308,21 @@ func beatAnchorsFromMarkers(sampleRate, sampleLimit float64, grid []lib.Marker) 
 	last := grid[len(grid)-1]
 	end := anchors[len(anchors)-1].Sample + float64(anchors[len(anchors)-1].BeatsUntilNext)*sampleRate*60/last.Bpm
 	return append(anchors, BeatAnchor{Sample: end, Beat: beat}), nil
+}
+
+// barAlignedBeats returns the positive whole beat count nearest exact that starts the next segment at want, its
+// zero-based position in the bar.
+func barAlignedBeats(beat int64, exact float64, want int) float64 {
+	best, bestDistance := 0.0, math.Inf(1)
+	for count := math.Max(1, math.Floor(exact)-3); count <= math.Max(1, math.Ceil(exact))+3; count++ {
+		if beatInBar(beat+int64(count)) != want {
+			continue
+		}
+		if distance := math.Abs(count - exact); distance < bestDistance {
+			best, bestDistance = count, distance
+		}
+	}
+	return best
 }
 
 func createQuickCuesBlob(sampleRate float64, mainCue float64, cues []lib.HotCue) []byte {
