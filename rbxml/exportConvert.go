@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -197,7 +198,7 @@ func exportConvertSubPlaylists(playlist lib.Playlist) node {
 		if len(playlist.Songs) > 0 {
 			var tracks []nodeTrack
 			for _, id := range playlist.Songs {
-				tracks = append(tracks, nodeTrack{Id: int32(id)})
+				tracks = append(tracks, nodeTrack{Key: strconv.Itoa(id)})
 			}
 			children = append(children, node{
 				NodeType: 1,
@@ -225,7 +226,7 @@ func exportConvertSubPlaylists(playlist lib.Playlist) node {
 	// Simple playlist with no sub-playlists (Type 1)
 	var tracks []nodeTrack
 	for _, id := range playlist.Songs {
-		tracks = append(tracks, nodeTrack{Id: int32(id)})
+		tracks = append(tracks, nodeTrack{Key: strconv.Itoa(id)})
 	}
 	return node{
 		NodeType: 1,
@@ -274,7 +275,7 @@ func exportConvertSong(library *lib.Library, options ExportOptions) ([]track, er
 		}
 
 		tracks = append(tracks, track{
-			TrackId:      song.SongID,
+			TrackId:      new(song.SongID),
 			Name:         song.Title,
 			Artist:       song.Artist,
 			Composer:     song.Composer,

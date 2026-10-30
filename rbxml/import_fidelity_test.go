@@ -38,7 +38,7 @@ func TestImportRejectsNonlocalAndInvalidLocations(t *testing.T) {
 	} {
 		t.Run(location, func(t *testing.T) {
 			doc := rbxml.NewDocument()
-			doc.AddTrack(rbxml.Track{TrackId: 1, Location: location, AverageBpm: 120})
+			doc.AddTrack(rbxml.Track{TrackId: new(1), Location: location, AverageBpm: 120})
 			if library, err := doc.ToLibrary(); err == nil {
 				t.Fatalf("invalid file URI accepted: %+v", library.Songs)
 			}
@@ -59,7 +59,7 @@ func TestImportResolvesLocalFileAuthorities(t *testing.T) {
 	} {
 		t.Run(location, func(t *testing.T) {
 			doc := rbxml.NewDocument()
-			doc.AddTrack(rbxml.Track{TrackId: 1, Location: location})
+			doc.AddTrack(rbxml.Track{TrackId: new(1), Location: location})
 			library, err := doc.ToLibrary()
 			if err != nil || len(library.Songs) != 1 {
 				t.Fatalf("local file import=%+v error=%v", library, err)
@@ -95,7 +95,7 @@ func TestImportMusicalKeyFidelity(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			doc := rbxml.NewDocument()
-			doc.AddTrack(rbxml.Track{TrackId: 1, Location: location, AverageBpm: 120, Tonality: test.tonality})
+			doc.AddTrack(rbxml.Track{TrackId: new(1), Location: location, AverageBpm: 120, Tonality: test.tonality})
 			library, err := doc.ToLibrary()
 			if (err != nil) != test.wantError {
 				t.Fatalf("tonality %q: library=%+v error=%v", test.tonality, library, err)

@@ -32,7 +32,7 @@ type Product struct {
 }
 
 type Track struct {
-	TrackId      int             `xml:"TrackID,attr"`
+	TrackId      *int            `xml:"TrackID,attr,omitempty"` // nil when the source omits its ID; zero is a valid ID
 	Name         string          `xml:"Name,attr,omitempty"`
 	Artist       string          `xml:"Artist,attr,omitempty"`
 	Composer     string          `xml:"Composer,attr,omitempty"`
@@ -84,13 +84,13 @@ type Node struct {
 	Name     string       `xml:"Name,attr"`
 	Count    int32        `xml:"Count,attr,omitempty"`   // number of sub-nodes
 	Entries  int32        `xml:"Entries,attr,omitempty"` // number of tracks in playlist
-	KeyType  int32        `xml:"KeyType,attr"`           // trackId=0, location=1, should always be 0
+	KeyType  int32        `xml:"KeyType,attr"`           // trackId=0, location=1
 	Tracks   *[]NodeTrack `xml:"TRACK,omitempty"`
 	Nodes    *[]Node      `xml:"NODE,omitempty"`
 }
 
 type NodeTrack struct {
-	Id int32 `xml:"Key,attr"`
+	Key string `xml:"Key,attr"` // decimal TrackID or exact Location URI, selected by Node.KeyType
 }
 
 type Collection struct {
@@ -149,7 +149,7 @@ func (d *Document) Save(path string) error {
 // FindTrackByID finds a track by its TrackId. Returns nil if not found.
 func (d *Document) FindTrackByID(id int) *Track {
 	for i := range d.Collection.Tracks {
-		if d.Collection.Tracks[i].TrackId == id {
+		if trackID := d.Collection.Tracks[i].TrackId; trackID != nil && *trackID == id {
 			return &d.Collection.Tracks[i]
 		}
 	}
@@ -169,7 +169,10 @@ func (d *Document) FindTrackByLocation(location string) *Track {
 // AddTrack adds or updates a track in the collection.
 func (d *Document) AddTrack(t Track) {
 	for i := range d.Collection.Tracks {
-		if d.Collection.Tracks[i].TrackId == t.TrackId {
+		existing := &d.Collection.Tracks[i]
+		sameID := existing.TrackId != nil && t.TrackId != nil && *existing.TrackId == *t.TrackId
+		sameLocation := existing.TrackId == nil && t.TrackId == nil && existing.Location == t.Location
+		if sameID || sameLocation {
 			d.Collection.Tracks[i] = t
 			return
 		}
@@ -181,7 +184,7 @@ func (d *Document) AddTrack(t Track) {
 // RemoveTrack removes a track by TrackId from the collection.
 func (d *Document) RemoveTrack(id int) {
 	for i := range d.Collection.Tracks {
-		if d.Collection.Tracks[i].TrackId == id {
+		if trackID := d.Collection.Tracks[i].TrackId; trackID != nil && *trackID == id {
 			d.Collection.Tracks = append(d.Collection.Tracks[:i], d.Collection.Tracks[i+1:]...)
 			d.Collection.Entries = int32(len(d.Collection.Tracks))
 			break
@@ -234,8 +237,12 @@ func FromLibrary(library *lib.Library, options ...ExportOptions) (*Document, err
 // sort sorts a djPlaylists struct's songs by song id, then each
 // song's PositionMarks by cue, then cue points by id, then loops by id.
 func (d *djPlaylists) sort() {
-	sort.Slice(d.Collection.Tracks, func(i, j int) bool {
-		return d.Collection.Tracks[i].TrackId < d.Collection.Tracks[j].TrackId
+	sort.SliceStable(d.Collection.Tracks, func(i, j int) bool {
+		a, b := d.Collection.Tracks[i].TrackId, d.Collection.Tracks[j].TrackId
+		if a == nil {
+			return false
+		}
+		return b == nil || *a < *b
 	})
 
 	for i, track := range d.Collection.Tracks {

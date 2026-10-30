@@ -14,19 +14,25 @@ import (
 
 func importConvert(djPlaylists *djPlaylists) (lib.Library, error) {
 	var library lib.Library
-	var err error
-	library.Songs, err = importConvertSong(djPlaylists)
+	refs, err := importReferences(djPlaylists)
 	if err != nil {
 		return lib.Library{}, err
 	}
-	library.Playlists = importConvertPlaylists(djPlaylists)
+	library.Songs, err = importConvertSong(djPlaylists, refs.songIDs)
+	if err != nil {
+		return lib.Library{}, err
+	}
+	library.Playlists, err = importConvertPlaylists(djPlaylists, refs)
+	if err != nil {
+		return lib.Library{}, err
+	}
 
 	return library, nil
 }
 
-func importConvertSong(djPlaylists *djPlaylists) ([]lib.Song, error) {
+func importConvertSong(djPlaylists *djPlaylists, songIDs []int) ([]lib.Song, error) {
 	var songs []lib.Song
-	for _, track := range djPlaylists.Collection.Tracks {
+	for i, track := range djPlaylists.Collection.Tracks {
 		dateModified, err := dateToUnix(track.DateModified)
 		if err != nil {
 			return nil, fmt.Errorf("error converting song: %w", err)
@@ -54,7 +60,7 @@ func importConvertSong(djPlaylists *djPlaylists) ([]lib.Song, error) {
 		markers := importConvertGrid(track)
 		cues, loops := importConvertCuesLoops(track)
 		song := lib.Song{
-			SongID:       track.TrackId,
+			SongID:       songIDs[i],
 			Title:        track.Name,
 			Artist:       track.Artist,
 			Composer:     track.Composer,
@@ -90,19 +96,25 @@ func importConvertSong(djPlaylists *djPlaylists) ([]lib.Song, error) {
 	return songs, nil
 }
 
-func importConvertPlaylists(djPlaylists *djPlaylists) []lib.Playlist {
+func importConvertPlaylists(djPlaylists *djPlaylists, refs trackReferences) ([]lib.Playlist, error) {
 	if djPlaylists.Playlists.Node.Nodes == nil {
-		return nil
+		return nil, nil
 	}
 
 	var id int = 1 // playlists don't have ids, so they will be assigned incrementally
 
-	return importConvertSubPlaylists(djPlaylists.Playlists.Node.Nodes, &id)
+	return importConvertSubPlaylists(djPlaylists.Playlists.Node.Nodes, &id, refs)
 }
 
-func importConvertSubPlaylists(rbPlaylists *[]node, id *int) []lib.Playlist {
+func importConvertSubPlaylists(rbPlaylists *[]node, id *int, refs trackReferences) ([]lib.Playlist, error) {
 	var playlists []lib.Playlist
 	for _, node := range *rbPlaylists {
+		if node.NodeType != 0 && node.NodeType != 1 {
+			return nil, fmt.Errorf("playlist %q has unsupported node type %d", node.Name, node.NodeType)
+		}
+		if node.NodeType == 1 && node.KeyType != 0 && node.KeyType != 1 {
+			return nil, fmt.Errorf("playlist %q has unsupported key type %d", node.Name, node.KeyType)
+		}
 		playlist := lib.Playlist{
 			PlaylistID: *id,
 			Name:       node.Name,
@@ -113,19 +125,27 @@ func importConvertSubPlaylists(rbPlaylists *[]node, id *int) []lib.Playlist {
 		if node.Tracks != nil {
 			var songs []int
 			for _, track := range *node.Tracks {
-				songs = append(songs, int(track.Id))
+				songID, err := refs.resolve(node.KeyType, track.Key)
+				if err != nil {
+					return nil, fmt.Errorf("playlist %q: %w", node.Name, err)
+				}
+				songs = append(songs, songID)
 			}
 			playlist.Songs = songs
 		}
 
 		// populate sub-playlists if any (do not concatenate into parent playlist)
 		if node.Nodes != nil {
-			playlist.SubPlaylists = importConvertSubPlaylists(node.Nodes, id)
+			var err error
+			playlist.SubPlaylists, err = importConvertSubPlaylists(node.Nodes, id, refs)
+			if err != nil {
+				return nil, err
+			}
 		}
 		playlists = append(playlists, playlist)
 	}
 
-	return playlists
+	return playlists, nil
 }
 
 func importConvertGrid(track track) []lib.Marker {

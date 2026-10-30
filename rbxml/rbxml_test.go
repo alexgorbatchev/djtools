@@ -120,7 +120,7 @@ func TestDocument_GranularOperations(t *testing.T) {
 
 	// Add track
 	track := rbxml.Track{
-		TrackId:  1,
+		TrackId:  new(1),
 		Name:     "Test Track",
 		Artist:   "Test Artist",
 		Location: "file://localhost/music/test.mp3",
@@ -139,7 +139,7 @@ func TestDocument_GranularOperations(t *testing.T) {
 	// Find by Location
 	foundByLoc := doc.FindTrackByLocation("file://localhost/music/test.mp3")
 	assert.NotNil(t, foundByLoc)
-	assert.Equal(t, 1, foundByLoc.TrackId)
+	assert.Equal(t, new(1), foundByLoc.TrackId)
 
 	// Find by Location not found
 	assert.Nil(t, doc.FindTrackByLocation("file://localhost/missing.mp3"))
@@ -162,7 +162,7 @@ func TestDocument_GranularOperations(t *testing.T) {
 
 	// Save and Open Document
 	tempFile := filepath.Join(t.TempDir(), "roundtrip.xml")
-	doc.AddTrack(rbxml.Track{TrackId: 2, Name: "Saved Track"})
+	doc.AddTrack(rbxml.Track{TrackId: new(2), Name: "Saved Track"})
 	err := doc.Save(tempFile)
 	assert.NoError(t, err)
 
