@@ -178,6 +178,15 @@ func EncodeBeatData(data BeatData) ([]byte, error) {
 	return qCompress(encodeBeatPayload(data))
 }
 
+// EncodeUnsetBeatData initializes the native sample header for saved positions
+// without inventing beat anchors or marking a grid as analyzed.
+func EncodeUnsetBeatData(sampleRate, sampleLimit float64) ([]byte, error) {
+	if !finite(sampleRate) || sampleRate <= 0 || !finite(sampleLimit) || sampleLimit < 0 {
+		return nil, fmt.Errorf("%w: invalid unset grid sample rate or limit", ErrInvalidBeatData)
+	}
+	return qCompress(encodeBeatPayload(BeatData{SampleRate: sampleRate, SampleLimit: sampleLimit}))
+}
+
 func encodeBeatPayload(data BeatData) []byte {
 	size := beatDataHeaderBytes + 16 + beatAnchorBytes*(len(data.Default)+len(data.Adjusted)) + beatDataTailBytes
 	payload := make([]byte, 0, size)

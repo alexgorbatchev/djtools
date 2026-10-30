@@ -159,6 +159,14 @@ if err != nil {
 log.Printf("%.2f BPM", engine.BeatGridBPM(decoded.SampleRate, decoded.Adjusted))
 ```
 
+### 4. Native Engine DJ Hot Cues
+
+`engine.SetSavedHotCue(beat, quickCues, cue)` returns a Qt-compressed `quickCues` blob with one slot replaced. `lib.HotCue.Position` selects slot 1–8; `Offset` is fractional source seconds, `Name` is valid UTF-8 up to 255 bytes, and `Color` is `#RRGGBB`. The beat blob supplies the native sample rate. Other slots, existing cue alpha, and the original/modified main-cue trailer retain their exact payload bytes. An empty slot receives opaque color.
+
+`engine.ClearSavedHotCue(quickCues, slot)` clears one slot and preserves the other records and main cue. Clearing an absent blob leaves it absent. Both functions reject malformed existing data and leave their inputs unchanged; they do not open or write databases.
+
+For a track without saved beat data, `engine.EncodeUnsetBeatData(sampleRate, sampleLimit)` encodes a validated native sample header with no beat anchors and no analyzed-grid flag. Supply the actual audio sample rate and sample-length limit. Persist only the returned cue blob and any necessary initial beat blob; these functions do not replace other performance columns or loop data.
+
 ---
 
 ## Testing

@@ -2,12 +2,10 @@ package engine
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"math"
 	"os"
 	"reflect"
-	"regexp"
 	"testing"
 
 	"github.com/nateranda/djtools/lib"
@@ -159,10 +157,6 @@ func TestSavedPerformanceCompressionBounds(t *testing.T) {
 }
 
 func TestDecodeSavedPerformanceNativeFixtures(t *testing.T) {
-	sql, err := os.ReadFile("testdata/import/fixtures/alteredPerformanceData/m.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
 	data, err := os.ReadFile("testdata/import/stubs/alteredPerformanceData.json")
 	if err != nil {
 		t.Fatal(err)
@@ -171,16 +165,8 @@ func TestDecodeSavedPerformanceNativeFixtures(t *testing.T) {
 	if err := json.Unmarshal(data, &library); err != nil {
 		t.Fatal(err)
 	}
-	rows := regexp.MustCompile(`INSERT INTO PerformanceData VALUES\([^\n]+`).FindAll(sql, -1)
-	for i, row := range rows {
-		matches := regexp.MustCompile(`X'([0-9a-fA-F]*)'`).FindAllSubmatch(row, -1)
-		blobs := make([][]byte, len(matches))
-		for j, match := range matches {
-			blobs[j], err = hex.DecodeString(string(match[1]))
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
+	for i := range library.Songs {
+		blobs := nativePerformanceBlobs(t, "alteredPerformanceData", i+1)
 		got, err := DecodeSavedPerformance(blobs[2], blobs[3], blobs[4])
 		if err != nil {
 			t.Fatalf("track %d: %v", i+1, err)
