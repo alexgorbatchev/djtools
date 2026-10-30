@@ -5,3 +5,4 @@ tmp/
 __debug_*
 test.gocoverage.out
 /coverage.out
+/.tmp/
