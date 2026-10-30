@@ -51,5 +51,5 @@ jobs:
     - name: Verify native Rekordbox file imports
       run: go test ./rbxml -count=1 -run '^Test(Import(PreservesUnanalyzedTracksAndModificationDate|RejectsNonlocalAndInvalidLocations|ResolvesLocalFileAuthorities|MusicalKeyFidelity|ResolvesLocationPlaylistReferences|AssignsMissingTrackIDsWithoutChangingDocument|RejectsInvalidPlaylistReferences|PreservesRepeatedLocationsWithIDReferences)|DocumentMaintainsTracksWithoutSourceIDs)$'
 
-    - name: Verify native saved cue and loop payloads
-      run: go test ./engine -count=1 -run '^TestEncodeSavedMarkers'
+    - name: Verify native saved positions and tempo grids
+      run: go test ./engine -count=1 -run '^TestEncode(SavedMarkers|TempoGrid)'

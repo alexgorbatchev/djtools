@@ -287,14 +287,26 @@ func beatAnchorsFromMarkers(sampleRate, sampleLimit float64, grid []lib.Marker) 
 		}
 		sample := m.StartPosition * sampleRate
 		samplesPerBeat := sampleRate * 60 / m.Bpm
+		if !finite(sample) || !finite(samplesPerBeat) || samplesPerBeat <= 0 {
+			return nil, fmt.Errorf("%w: marker %d has an unrepresentable sample position or beat length", ErrInvalidBeatGrid, i)
+		}
 		var beats float64
 		if i+1 < len(grid) {
 			// The next marker states its own position in the bar, so land on the nearest whole number of beats
 			// that agrees with it instead of carrying rounding drift into later bars.
 			exact := (grid[i+1].StartPosition*sampleRate - sample) / samplesPerBeat
+			// Alignment increments floating-point counts. Beyond the native uint32
+			// range the result cannot be stored; at still larger values count++
+			// stops advancing and would never terminate.
+			if !finite(exact) || exact > math.MaxUint32 {
+				return nil, fmt.Errorf("%w: marker %d spans too many beats", ErrInvalidBeatGrid, i)
+			}
 			beats = barAlignedBeats(beat, exact, beatInBar(int64(grid[i+1].BeatNumber)))
 		} else {
 			beats = math.Ceil((sampleLimit - sample) / samplesPerBeat)
+		}
+		if !finite(beats) || beats > math.MaxUint32 {
+			return nil, fmt.Errorf("%w: marker %d spans too many beats", ErrInvalidBeatGrid, i)
 		}
 		if beats < 1 {
 			beats = 1
