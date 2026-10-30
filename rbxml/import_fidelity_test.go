@@ -75,6 +75,41 @@ func TestImportResolvesLocalFileAuthorities(t *testing.T) {
 	}
 }
 
+func TestImportMusicalKeyFidelity(t *testing.T) {
+	location := nativeFileURI(filepath.Join(t.TempDir(), "track.wav"))
+	for _, test := range []struct {
+		name, tonality string
+		want           int
+		wantError      bool
+	}{
+		{name: "missing", want: -1},
+		{name: "major name", tonality: "C", want: 0},
+		{name: "minor name", tonality: "Am", want: 1},
+		{name: "sharp minor", tonality: "F#m", want: 7},
+		{name: "flat major", tonality: "Bb", want: 20},
+		{name: "unicode flat", tonality: "B♭", want: 20},
+		{name: "enharmonic major", tonality: "C#", want: 14},
+		{name: "camelot", tonality: "8A", want: 1},
+		{name: "open key", tonality: "1m", want: 1},
+		{name: "unknown", tonality: "unrecognized key", wantError: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			doc := rbxml.NewDocument()
+			doc.AddTrack(rbxml.Track{TrackId: 1, Location: location, AverageBpm: 120, Tonality: test.tonality})
+			library, err := doc.ToLibrary()
+			if (err != nil) != test.wantError {
+				t.Fatalf("tonality %q: library=%+v error=%v", test.tonality, library, err)
+			}
+			if test.wantError {
+				return
+			}
+			if len(library.Songs) != 1 || library.Songs[0].Key != test.want {
+				t.Fatalf("tonality %q: songs=%+v; want key %d", test.tonality, library.Songs, test.want)
+			}
+		})
+	}
+}
+
 func TestImportPreservesUnanalyzedTracksAndModificationDate(t *testing.T) {
 	dir := t.TempDir()
 	media := filepath.Join(dir, "未解析 #100%.wav")

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/nateranda/djtools/lib"
+	"github.com/nateranda/djtools/musicalkey"
 )
 
 func importConvert(djPlaylists *djPlaylists) (lib.Library, error) {
@@ -212,59 +213,14 @@ func uriToPath(uri string) (string, error) {
 }
 
 func tonalityToInt(tonality string) (int, error) {
-	switch tonality {
-	case "":
-		return 0, nil
-	case "8B":
-		return 0, nil
-	case "8A":
-		return 1, nil
-	case "9B":
-		return 2, nil
-	case "9A":
-		return 3, nil
-	case "10B":
-		return 4, nil
-	case "10A":
-		return 5, nil
-	case "11B":
-		return 6, nil
-	case "11A":
-		return 7, nil
-	case "12B":
-		return 8, nil
-	case "12A":
-		return 9, nil
-	case "1B":
-		return 10, nil
-	case "1A":
-		return 11, nil
-	case "2B":
-		return 12, nil
-	case "2A":
-		return 13, nil
-	case "3B":
-		return 14, nil
-	case "3A":
-		return 15, nil
-	case "4B":
-		return 16, nil
-	case "4A":
-		return 17, nil
-	case "5B":
-		return 18, nil
-	case "5A":
-		return 19, nil
-	case "6B":
-		return 20, nil
-	case "6A":
-		return 21, nil
-	case "7B":
-		return 22, nil
-	case "7A":
-		return 23, nil
+	if strings.TrimSpace(tonality) == "" {
+		return musicalkey.None, nil
 	}
-	return 0, nil // Fallback to 0 for unrecognized key
+	key, err := musicalkey.Parse(tonality)
+	if err != nil {
+		return 0, fmt.Errorf("converting tonality: %w", err)
+	}
+	return int(key), nil
 }
 
 func importConvertRating(rating int32) (int, error) {

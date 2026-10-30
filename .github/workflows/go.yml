@@ -49,4 +49,4 @@ jobs:
       with:
         go-version-file: go.mod
     - name: Verify native Rekordbox file imports
-      run: go test ./rbxml -count=1 -run '^TestImport(PreservesUnanalyzedTracksAndModificationDate|RejectsNonlocalAndInvalidLocations|ResolvesLocalFileAuthorities)$'
+      run: go test ./rbxml -count=1 -run '^TestImport(PreservesUnanalyzedTracksAndModificationDate|RejectsNonlocalAndInvalidLocations|ResolvesLocalFileAuthorities|MusicalKeyFidelity)$'
