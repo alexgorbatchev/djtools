@@ -164,7 +164,10 @@ func exportTracksAndPerf(ctx context.Context, db sqlExecutor, library lib.Librar
 			sampleRate = 44100
 		}
 
-		beatDataBlobRaw := createBeatDataBlob(sampleRate, song.Grid)
+		beatDataBlobRaw, err := createBeatDataBlob(sampleRate, (float64(song.Length)+1)*sampleRate, song.Grid)
+		if err != nil {
+			return fmt.Errorf("error encoding beatData for song %d: %w", song.SongID, err)
+		}
 		beatDataBlobComp, err := qCompress(beatDataBlobRaw)
 		if err != nil {
 			return fmt.Errorf("error compressing beatData for song %d: %w", song.SongID, err)

@@ -160,11 +160,11 @@ func Import(path string, importOptions ImportOptions) (lib.Library, error) {
 			if err == nil {
 				bData, err := beatDataFromBlob(decompBeat)
 				if err == nil {
-					song.SampleRate = bData.sampleRate
+					song.SampleRate = bData.SampleRate
 					if importOptions.ImportOriginalGrids {
-						song.Grid = gridFromBeatData(bData.sampleRate, bData.defaultBeatgrid)
+						song.Grid = gridFromBeatData(bData.SampleRate, bData.Default)
 					} else {
-						song.Grid = gridFromBeatData(bData.sampleRate, bData.adjBeatgrid)
+						song.Grid = gridFromBeatData(bData.SampleRate, bData.Adjusted)
 					}
 				}
 			}

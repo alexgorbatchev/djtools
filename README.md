@@ -134,6 +134,31 @@ func main() {
 }
 ```
 
+### 3. Native Engine DJ Beat Grids
+
+`engine.DecodeBeatData` and `engine.EncodeBeatData` read and write `PerformanceData.beatData` without converting it to `lib.Marker` values. `BeatData` keeps the sample rate, sample-length limit, the default grid Engine restores on reset, the adjusted grid it plays and edits, and the trailing source and reference-sample fields. Each `BeatAnchor` stores a sample position, a zero-based beat index, and the beat count until the next anchor; the final anchor counts no beats. Encoding validates both grids first.
+
+```go
+// Analyzed grids start one bar before the first downbeat and end past the track.
+anchors := []engine.BeatAnchor{
+	{Sample: -88200, Beat: -4, BeatsUntilNext: 520},
+	{Sample: 11377800, Beat: 516},
+}
+data, err := engine.NewBeatData(44100, 11500000, anchors)
+if err != nil {
+	log.Fatal(err)
+}
+blob, err := engine.EncodeBeatData(data)
+if err != nil {
+	log.Fatal(err)
+}
+decoded, err := engine.DecodeBeatData(blob)
+if err != nil {
+	log.Fatal(err)
+}
+log.Printf("%.2f BPM", engine.BeatGridBPM(decoded.SampleRate, decoded.Adjusted))
+```
+
 ---
 
 ## Testing

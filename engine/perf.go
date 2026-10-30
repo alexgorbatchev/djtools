@@ -16,22 +16,10 @@ import (
 
 var ErrPerformanceDataNotFound = errors.New("performance data not found")
 
-type beatData struct {
-	sampleRate      float64
-	defaultBeatgrid []marker
-	adjBeatgrid     []marker
-}
-
 type cueData struct {
 	cues        []lib.HotCue
 	cueOriginal float64
 	cueModified float64
-}
-
-type marker struct {
-	offset     float64
-	beatNumber int64
-	numBeats   uint32
 }
 
 // GetPerformanceData retrieves and decompresses performance data (cue points, loops, beat grids, waveforms) for a track.
@@ -75,8 +63,8 @@ func (db *DB) GetPerformanceData(ctx context.Context, trackID int64) (*Performan
 		if err == nil {
 			bData, err := beatDataFromBlob(decompBeat)
 			if err == nil {
-				p.SampleRate = bData.sampleRate
-				p.BeatGrid = gridFromBeatData(bData.sampleRate, bData.adjBeatgrid)
+				p.SampleRate = bData.SampleRate
+				p.BeatGrid = gridFromBeatData(bData.SampleRate, bData.Adjusted)
 			}
 		}
 	}
@@ -125,7 +113,14 @@ func (db *DB) UpdatePerformanceData(ctx context.Context, data *PerformanceData) 
 	// If raw blobs are not provided, encode from structured data
 	beatBlob := data.BeatDataBlob
 	if len(beatBlob) == 0 && len(data.BeatGrid) > 0 {
-		raw := createBeatDataBlob(sampleRate, data.BeatGrid)
+		var length sql.NullFloat64
+		if err := db.mDB.QueryRowContext(ctx, "SELECT length FROM Track WHERE id = ?", data.TrackID).Scan(&length); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("reading track %d length for beat data: %w", data.TrackID, err)
+		}
+		raw, err := createBeatDataBlob(sampleRate, (length.Float64+1)*sampleRate, data.BeatGrid)
+		if err != nil {
+			return fmt.Errorf("encoding beat data: %w", err)
+		}
 		comp, err := qCompress(raw)
 		if err != nil {
 			return fmt.Errorf("compressing beat data: %w", err)
@@ -230,69 +225,20 @@ func qCompress(data []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func beatDataFromBlob(blob []byte) (beatData, error) {
-	if len(blob) < 33 {
-		return beatData{}, fmt.Errorf("InvalidBlobError: beatData blob should be at least 33 bytes")
-	}
-
-	var bd beatData
-	i := 0
-
-	bd.sampleRate = math.Float64frombits(binary.BigEndian.Uint64(blob[i : i+8]))
-	i += 17 // skip past track length and beatgrid set byte
-
-	if len(blob) < i+8 {
-		return bd, fmt.Errorf("InvalidBlobError: truncated default beatgrid header")
-	}
-	numMarkers := binary.BigEndian.Uint64(blob[i : i+8])
-	i += 8
-
-	for range numMarkers {
-		if len(blob) < i+28 {
-			break
-		}
-		var m marker
-		m.offset = math.Float64frombits(binary.LittleEndian.Uint64(blob[i : i+8]))
-		i += 8
-		m.beatNumber = int64(binary.LittleEndian.Uint64(blob[i : i+8]))
-		i += 8
-		m.numBeats = binary.LittleEndian.Uint32(blob[i : i+4])
-		i += 8 // skip unknown int32
-		bd.defaultBeatgrid = append(bd.defaultBeatgrid, m)
-	}
-
-	if len(blob) < i+8 {
-		return bd, nil
-	}
-	numMarkers = binary.BigEndian.Uint64(blob[i : i+8])
-	i += 8
-	for range numMarkers {
-		if len(blob) < i+28 {
-			break
-		}
-		var m marker
-		m.offset = math.Float64frombits(binary.LittleEndian.Uint64(blob[i : i+8]))
-		i += 8
-		m.beatNumber = int64(binary.LittleEndian.Uint64(blob[i : i+8]))
-		i += 8
-		m.numBeats = binary.LittleEndian.Uint32(blob[i : i+4])
-		i += 8
-		bd.adjBeatgrid = append(bd.adjBeatgrid, m)
-	}
-
-	return bd, nil
+func beatDataFromBlob(payload []byte) (BeatData, error) {
+	return decodeBeatPayload(payload)
 }
 
-func gridFromBeatData(sampleRate float64, enGrid []marker) []lib.Marker {
+func gridFromBeatData(sampleRate float64, anchors []BeatAnchor) []lib.Marker {
 	var grid []lib.Marker
-	for i := range len(enGrid) - 1 {
+	for i := range len(anchors) - 1 {
 		var m lib.Marker
-		m.StartPosition = enGrid[i].offset / sampleRate
-		lenMarker := enGrid[i+1].offset - enGrid[i].offset
+		m.StartPosition = anchors[i].Sample / sampleRate
+		lenMarker := anchors[i+1].Sample - anchors[i].Sample
 		if lenMarker > 0 {
-			m.Bpm = sampleRate * 60 * float64(enGrid[i].numBeats) / lenMarker
+			m.Bpm = sampleRate * 60 * float64(anchors[i].BeatsUntilNext) / lenMarker
 		}
-		m.BeatNumber = int(enGrid[i].beatNumber) % 4
+		m.BeatNumber = beatInBar(anchors[i].Beat)
 		grid = append(grid, m)
 	}
 
@@ -307,52 +253,58 @@ func gridFromBeatData(sampleRate float64, enGrid []marker) []lib.Marker {
 	return grid
 }
 
-func createBeatDataBlob(sampleRate float64, grid []lib.Marker) []byte {
-	var buf bytes.Buffer
-	var b8 [8]byte
-	var b4 [4]byte
+// beatInBar returns a beat's zero-based position in its 4/4 bar, including
+// negative preroll beats.
+func beatInBar(beat int64) int {
+	return int(((beat % 4) + 4) % 4)
+}
 
-	binary.BigEndian.PutUint64(b8[:], math.Float64bits(sampleRate))
-	buf.Write(b8[:])
-
-	// skip 17 bytes (track length, set flags)
-	buf.Write(make([]byte, 17))
-
-	// default beatgrid marker count
-	binary.BigEndian.PutUint64(b8[:], uint64(len(grid)))
-	buf.Write(b8[:])
-
-	for _, m := range grid {
-		binary.LittleEndian.PutUint64(b8[:], math.Float64bits(m.StartPosition*sampleRate))
-		buf.Write(b8[:])
-
-		binary.LittleEndian.PutUint64(b8[:], uint64(m.BeatNumber))
-		buf.Write(b8[:])
-
-		binary.LittleEndian.PutUint32(b4[:], 1)
-		buf.Write(b4[:])
-
-		buf.Write(make([]byte, 8))
+// createBeatDataBlob converts tempo markers into Engine's native anchors. Each
+// marker starts a segment that lasts until the next marker; the last segment
+// extends past sampleLimit. Without markers it writes an unset grid, which
+// Engine replaces with its fallback.
+func createBeatDataBlob(sampleRate, sampleLimit float64, grid []lib.Marker) ([]byte, error) {
+	if len(grid) == 0 {
+		return encodeBeatPayload(BeatData{SampleRate: sampleRate, SampleLimit: sampleLimit}), nil
 	}
-
-	// adjusted beatgrid marker count
-	binary.BigEndian.PutUint64(b8[:], uint64(len(grid)))
-	buf.Write(b8[:])
-
-	for _, m := range grid {
-		binary.LittleEndian.PutUint64(b8[:], math.Float64bits(m.StartPosition*sampleRate))
-		buf.Write(b8[:])
-
-		binary.LittleEndian.PutUint64(b8[:], uint64(m.BeatNumber))
-		buf.Write(b8[:])
-
-		binary.LittleEndian.PutUint32(b4[:], 1)
-		buf.Write(b4[:])
-
-		buf.Write(make([]byte, 8))
+	anchors, err := beatAnchorsFromMarkers(sampleRate, sampleLimit, grid)
+	if err != nil {
+		return nil, err
 	}
+	data, err := NewBeatData(sampleRate, sampleLimit, anchors)
+	if err != nil {
+		return nil, err
+	}
+	return encodeBeatPayload(data), nil
+}
 
-	return buf.Bytes()
+func beatAnchorsFromMarkers(sampleRate, sampleLimit float64, grid []lib.Marker) ([]BeatAnchor, error) {
+	anchors := make([]BeatAnchor, 0, len(grid)+1)
+	beat := int64(beatInBar(int64(grid[0].BeatNumber)))
+	for i, m := range grid {
+		if !finite(m.Bpm) || m.Bpm <= 0 || !finite(m.StartPosition) {
+			return nil, fmt.Errorf("%w: marker %d has no usable tempo", ErrInvalidBeatGrid, i)
+		}
+		sample := m.StartPosition * sampleRate
+		samplesPerBeat := sampleRate * 60 / m.Bpm
+		var beats float64
+		if i+1 < len(grid) {
+			beats = math.Round((grid[i+1].StartPosition*sampleRate - sample) / samplesPerBeat)
+		} else {
+			beats = math.Ceil((sampleLimit - sample) / samplesPerBeat)
+		}
+		if beats < 1 {
+			beats = 1
+		}
+		if i > 0 && sample <= anchors[i-1].Sample {
+			return nil, fmt.Errorf("%w: markers must be ordered by start position", ErrInvalidBeatGrid)
+		}
+		anchors = append(anchors, BeatAnchor{Sample: sample, Beat: beat, BeatsUntilNext: uint32(beats)})
+		beat += int64(beats)
+	}
+	last := grid[len(grid)-1]
+	end := anchors[len(anchors)-1].Sample + float64(anchors[len(anchors)-1].BeatsUntilNext)*sampleRate*60/last.Bpm
+	return append(anchors, BeatAnchor{Sample: end, Beat: beat}), nil
 }
 
 func createQuickCuesBlob(sampleRate float64, mainCue float64, cues []lib.HotCue) []byte {
