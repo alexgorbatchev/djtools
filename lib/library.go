@@ -99,7 +99,7 @@ type Smartlist struct {
 	ParentPlaylistPath string // parent path
 	NextPlaylistPath   string // next path
 	NextListUUID       string // next list UUID
-	Rules              string // rule string or JSON
+	Rules              string // Engine Smartlist JSON document, passed through unchanged
 }
 
 // Playlist is a set of ordered songs which can contain other playlists.

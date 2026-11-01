@@ -366,7 +366,7 @@ func TestInternalHelper_EdgeCoverages(t *testing.T) {
 	tempDir := t.TempDir()
 	emptyLib := lib.Library{
 		Smartlists: []lib.Smartlist{
-			{ListUUID: "uuid-1", Title: "Smart 1", Rules: "{}"},
+			{ListUUID: "uuid-1", Title: "Smart 1", Rules: desktopSmartlistRules},
 		},
 		AlbumArt: []lib.AlbumArt{
 			{ID: 1, Hash: "art-hash", Data: []byte("img")},
@@ -379,7 +379,8 @@ func TestInternalHelper_EdgeCoverages(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "export-generated-uuid", imported.DatabaseUUID)
 	assert.Equal(t, 2, imported.SchemaVersionMajor)
-	assert.Len(t, imported.Smartlists, 1)
+	require.Len(t, imported.Smartlists, 1)
+	assert.Equal(t, desktopSmartlistRules, imported.Smartlists[0].Rules)
 	assert.Len(t, imported.AlbumArt, 1)
 
 	// 2. Open without hm.db
@@ -390,7 +391,7 @@ func TestInternalHelper_EdgeCoverages(t *testing.T) {
 	require.NoError(t, db.Close())
 
 	// Remove hm.db so only m.db exists
-	_ = os.Remove(filepath.Join(mOnlyDir, "Database2", "hm.db"))
+	require.NoError(t, os.Remove(filepath.Join(mOnlyDir, "Database2", "hm.db")))
 	dbMOnly, err := engine.Open(mOnlyDir, true)
 	require.NoError(t, err)
 	assert.Nil(t, dbMOnly.HMDB())

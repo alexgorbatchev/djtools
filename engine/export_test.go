@@ -9,6 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// desktopSmartlistRules is the exact Desktop 5.1.0 T9 document from engine-cli
+// commit 16980172720ca6644c55cd3272b6a3ce9774f37b,
+// internal/fixturecapture/testdata/desktop-5.1.0/cases.json.
+// SHA-256: b557529df0ca6948aabcecb900e3be50396c8fd3b650627b34bd67773848b388.
+const desktopSmartlistRules = `{"match":"all","rules":[{"col":"title","con":"LIKE","param":"'%e's \"100\\%\\_a\\\\b\"%'","v":"2.20.0"}],"rv":2}`
+
 func TestExportAndRoundTripImport(t *testing.T) {
 	tempDir := t.TempDir()
 
@@ -125,8 +131,8 @@ func TestExportAndRoundTripImport(t *testing.T) {
 		Smartlists: []lib.Smartlist{
 			{
 				ListUUID: "smart-1",
-				Title:    "Top Rated",
-				Rules:    `{"rules": "rating > 80"}`,
+				Title:    "Captured Title Filter",
+				Rules:    desktopSmartlistRules,
 			},
 		},
 	}
@@ -176,7 +182,8 @@ func TestExportAndRoundTripImport(t *testing.T) {
 
 	// Verify smartlist
 	assert.Equal(t, "smart-1", importedLib.Smartlists[0].ListUUID)
-	assert.Equal(t, "Top Rated", importedLib.Smartlists[0].Title)
+	assert.Equal(t, "Captured Title Filter", importedLib.Smartlists[0].Title)
+	assert.Equal(t, desktopSmartlistRules, importedLib.Smartlists[0].Rules)
 
 	// Verify album art
 	assert.Equal(t, 1, importedLib.AlbumArt[0].ID)
